@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { MapPin, Phone, Dumbbell, Users , Instagram } from "lucide-react";
 import Section from "../components/ui/Section";
-import Hero from "../components/home/Hero";
+import Hero from "./home/hero.jsx";
 import Carousel from "./ui/carrousel";
 import { images } from "../assets/index.js";
 

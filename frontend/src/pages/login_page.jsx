@@ -8,7 +8,7 @@ import FormCard from "../components/form/form_card.jsx";
 import InputField from "../components/form/input_field.jsx";
 import SubmitButton from "../components/form/submit_button.jsx";
 import FormError from "../components/form/form_error.jsx";
-import WelcomeModal from "../components/modal/WelcomeModal.jsx";
+import WelcomeModal from "../components/modal/welcome_modal.jsx";
 
 import { useAuth } from "../auth/auth_context.jsx";
 import { authConfig } from "../config/auth_config.js";

@@ -1,5 +1,5 @@
 import { createBrowserRouter } from "react-router-dom";
-import AppLayout from "../components/layout/AppLayout";
+import AppLayout from "../components/layout/app_layout.jsx";
 import ProtectedRoute from "../components/protected_route.jsx";
 
 

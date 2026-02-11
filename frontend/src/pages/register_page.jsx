@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import RegisterSuccessModal from "../components/modal/RegisterSuccessModal.jsx";
+import RegisterSuccessModal from "../components/modal/register_success_modal.jsx";
 
 import FormCard from "../components/form/form_card.jsx";
 import InputField from "../components/form/input_field.jsx";
