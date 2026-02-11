@@ -1,6 +1,6 @@
-import Navbar from "./navbar";
-import Footer from "./footer";
-import { useAuth } from "../../auth/auth_context";
+import Navbar from "./navbar.jsx";
+import Footer from "./footer.jsx";
+import { useAuth } from "../../auth/auth_context.jsx";
 export default function AppLayout({ children }) {
     const { usuario , logout} = useAuth();
     return (
