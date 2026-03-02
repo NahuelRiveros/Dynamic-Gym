@@ -20,6 +20,7 @@ export const navbar_config  = {
   { label: "Ingreso", to: "/kiosk" },
   { label: "Login", to: "/login", ocultarSiAuth: true }, // ✅
   { label: "Registro", to: "/register" , requiereAuth: true },
+  { label: "Registrar pago", to: "/admin/pagos/registrar", requiereAuth: true, roles: ["admin","staff"] }
 ],
 
 // =========================

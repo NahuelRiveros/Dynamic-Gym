@@ -55,12 +55,12 @@ export async function registrarPago(req, res, next) {
 
     // ✅ Llamada al service
     const resultado = await registrarPagoPorDni({
-      documento: documento.trim(),
-      tipo_plan_id: Number(tipo_plan_id),
-      monto_pagado: Number(monto_pagado),
-      metodo_pago: metodo,
+    documento: documento.trim(),
+    tipo_plan_id: Number(tipo_plan_id),
+    monto_pagado: Number(monto_pagado),
+    metodo_pago: metodo,
+    modificado_por: req.user?.email || "SYSTEM",
     });
-
     // ✅ Manejo de respuestas del service
     if (!resultado.ok) {
       if (resultado.codigo === "NO_EXISTE") return res.status(404).json(resultado);

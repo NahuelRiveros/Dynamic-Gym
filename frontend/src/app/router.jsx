@@ -14,6 +14,7 @@ import VencimientosPage from "../pages/estadisticas/vencimientos_proximos.jsx";
 import HeatmapAsistenciasPage from "../pages/estadisticas/heatmap_asistencias.jsx"
 import ListaAlumnosPage from "../pages/estadisticas/lista_alumnos.jsx";
 import DetalleAlumnoPage from "../pages/estadisticas/detalle_alumno.jsx";
+import RegistrarPagoPage from "../pages/pagos/registrar_pago.jsx";
 
 export const router = createBrowserRouter([
   {
@@ -120,5 +121,15 @@ export const router = createBrowserRouter([
       </AppLayout>
     ),
   },
+  {
+  path: "/admin/pagos/registrar",
+  element: (
+    <AppLayout>
+      <ProtectedRoute roles={["admin", "staff"]}>
+        <RegistrarPagoPage />
+      </ProtectedRoute>
+    </AppLayout>
+  ),
+},
   
 ]);
