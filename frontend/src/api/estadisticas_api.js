@@ -68,3 +68,15 @@ export async function getAsistenciasHorasDia({ desde, hasta } = {}) {
   });
   return r.data;
 }
+
+export async function getHeatmapAsistencias({ desde, hasta } = {}) {
+  const r = await http.get("/estadisticas/asistencias_horas_dia", {
+    params: {
+      ...(desde ? { desde } : {}),
+      ...(hasta ? { hasta } : {}),
+    },
+  });
+  return r.data;
+}
+
+

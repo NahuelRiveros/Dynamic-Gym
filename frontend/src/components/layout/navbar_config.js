@@ -29,14 +29,13 @@ dropdowns: [
   {
     id: "admin",
     labelNoAuth: "Admin",
-    labelAuth: "Estadisicas",
+    labelAuth: "Estadisicas", 
     items: [
       { label: "Recaudación mensual", to: "/estadisticas/recaudaciones-mensual", requiereAuth: true, roles: ["admin"] },
       { label: "Alumnos nuevos", to: "/admin/estadisticas/alumnos-nuevos", requiereAuth: true, roles: ["admin"] },
       { label: "Vencimientos próximos", to: "/admin/estadisticas/vencimientos", requiereAuth: true, roles: ["admin"] },
-      { label: "Asistencias (resumen)", to: "/admin/estadisticas/asistencias", requiereAuth: true, roles: ["admin"] },
-      { label: "Asistencias por hora", to: "/admin/estadisticas/asistencias-horas", requiereAuth: true, roles: ["admin"] },
-      { label: "Heatmap hora x día", to: "/admin/estadisticas/heatmap", requiereAuth: true, roles: ["admin"] },
+      { label: "Frecuencia Horaria", to: "/admin/estadisticas/heatmap", requiereAuth: true, roles: ["admin"] },
+      { label: "Listado de Alumnos", to: "/admin/estadisticas/alumnos", requiereAuth: true, roles: ["admin"] },
     ],
   },
   //{

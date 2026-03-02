@@ -8,6 +8,7 @@ import { estadisticasRouter} from "./estadisticas_router.js";
 import { authRouter } from "./auth_routes.js";
 import { adminUsuariosRouter } from "./admin_usuarios_router.js";
 import { catalogosRouter } from "./catalogos_routers.js";
+import { adminAlumnosRouter } from "./admin_alumnos_router.js";
 
 const router = Router();
 
@@ -19,6 +20,7 @@ router.use("/ingresos",ingresoRouter);
 router.use("/pagos",pagosRouter);
 router.use("/estadisticas",estadisticasRouter);
 router.use("/auth", authRouter);
+router.use("/admin/alumnos", adminAlumnosRouter);
 
 
 

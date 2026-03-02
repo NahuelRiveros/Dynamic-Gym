@@ -10,6 +10,10 @@ import RegisterAlumnoPage from "../pages/register_page.jsx";
 import RecaudacionCalendario from "../pages/estadisticas/recaudaciones_mensual_page.jsx";
 import RecaudacionCalendarioDia from "../pages/estadisticas/recaudacion_mes_page.jsx";
 import AlumnosNuevosPage from "../pages/estadisticas/alumnos_nuevos.jsx";
+import VencimientosPage from "../pages/estadisticas/vencimientos_proximos.jsx";
+import HeatmapAsistenciasPage from "../pages/estadisticas/heatmap_asistencias.jsx"
+import ListaAlumnosPage from "../pages/estadisticas/lista_alumnos.jsx";
+import DetalleAlumnoPage from "../pages/estadisticas/detalle_alumno.jsx";
 
 export const router = createBrowserRouter([
   {
@@ -76,4 +80,45 @@ export const router = createBrowserRouter([
       </AppLayout>
     ),
   },
+  {
+    path: "/admin/estadisticas/vencimientos",
+    element: (
+      <AppLayout>
+        <ProtectedRoute roles={["admin"]}>
+          <VencimientosPage />
+        </ProtectedRoute>
+      </AppLayout>
+    ),
+  },
+  {
+    path: "/admin/estadisticas/heatmap",
+    element: (
+      <AppLayout>
+        <ProtectedRoute roles={["admin"]}>
+          <HeatmapAsistenciasPage />
+        </ProtectedRoute>
+      </AppLayout>
+    ),
+  },
+  {
+  path: "/admin/estadisticas/alumnos",
+  element: (
+    <AppLayout>
+      <ProtectedRoute roles={["admin", "staff"]}>
+        <ListaAlumnosPage />
+      </ProtectedRoute>
+    </AppLayout>
+  ),
+},
+{
+    path: "/admin/estadisticas/alumnos/:id",
+    element: (
+      <AppLayout>
+        <ProtectedRoute roles={["admin", "staff"]}>
+          <DetalleAlumnoPage />
+        </ProtectedRoute>
+      </AppLayout>
+    ),
+  },
+  
 ]);
