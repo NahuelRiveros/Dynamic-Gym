@@ -14,7 +14,6 @@ export function createApp() {
   app.use(express.json());
   app.use(cookieParser());
 
-  // CORS seguro (Vercel)
   app.use(
     cors({
       origin: env.CORS_ORIGIN ? [env.CORS_ORIGIN] : true,
@@ -22,14 +21,14 @@ export function createApp() {
     })
   );
 
-  // Health / root primero
+  // ✅ PONER ANTES DE routes
   app.get("/", (_req, res) => res.send("API Dynamic Gym OK"));
   app.get("/health", (_req, res) => res.json({ ok: true, status: "up" }));
 
   // Rutas API
   app.use(routes);
 
-  // Error handler al final
+  // error handler para JSON inválido / errores
   app.use((err, _req, res, _next) => {
     if (err?.type === "entity.parse.failed") {
       return res
