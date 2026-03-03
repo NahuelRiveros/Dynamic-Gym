@@ -12,7 +12,7 @@ export const env = {
   DB_NAME: process.env.DB_NAME || "dynamicGym",
   DB_USER: process.env.DB_USER || "postgres",
   DB_PASS: process.env.DB_PASS || "25466178",
-
+  CORS_ORIGIN: process.env.CORS_ORIGIN || "",
   // Seguridad
   JWT_SECRET: process.env.JWT_SECRET || "Maloki02",
 
