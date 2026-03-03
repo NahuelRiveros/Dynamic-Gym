@@ -5,6 +5,7 @@ import helmet from "helmet";
 import morgan from "morgan";
 import routes from "./routes/index.js";
 import { env } from "./configuracion_servidor/env.js";
+import { sequelize } from "./database/sequelize.js";
 
 export function createApp() {
   const app = express();
