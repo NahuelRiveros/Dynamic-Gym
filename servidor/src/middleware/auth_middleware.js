@@ -19,7 +19,7 @@ export function requireAuth(req, res, next) {
       return res.status(401).json({
         ok: false,
         codigo: "NO_AUTH",
-        mensaje: "No autorizado (sin token)",
+        mensaje: "No autorizado ⛔DEBES LOGEARTE⛔ ",
       });
     }
 
