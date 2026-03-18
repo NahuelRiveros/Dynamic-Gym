@@ -1,7 +1,7 @@
 import "dotenv/config.js";
 
 export const env = {
-  PORT: process.env.PORT || 4000,
+  PORT: process.env.PORT || 3001,
 
   // Para PROD (Render) recomendado
   DATABASE_URL: process.env.DATABASE_URL || "",
@@ -9,7 +9,7 @@ export const env = {
   // Para LOCAL (o si no querés DATABASE_URL)
   DB_HOST: process.env.DB_HOST || "localhost",
   DB_PORT: Number(process.env.DB_PORT || 5432),
-  DB_NAME: process.env.DB_NAME || "dynamicGym",
+  DB_NAME: process.env.DB_NAME || "dynamicgym",
   DB_USER: process.env.DB_USER || "postgres",
   DB_PASS: process.env.DB_PASS || "25466178",
   CORS_ORIGIN: process.env.CORS_ORIGIN || "",
