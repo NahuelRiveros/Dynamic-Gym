@@ -96,7 +96,7 @@ export default function ListaAlumnosPage() {
           "inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold border",
           restringido
             ? "bg-red-50 text-red-700 border-red-200"
-            : "bg-green-50 text-green-700 border-green-200",
+            : "bg-blue-50 text-blue-700 border-blue-200",
         ].join(" ")}
       >
         {estadoDesc || "—"}
@@ -126,7 +126,7 @@ export default function ListaAlumnosPage() {
           {/* Header */}
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
-              <div className="inline-flex items-center gap-2 rounded-full bg-green-600/10 px-4 py-1 text-sm font-semibold text-green-700">
+              <div className="inline-flex items-center gap-2 rounded-full bg-blue-600/10 px-4 py-1 text-sm font-semibold text-blue-700">
                 <Users size={16} />
                 Alumnos
               </div>
@@ -142,7 +142,7 @@ export default function ListaAlumnosPage() {
               type="button"
               onClick={() => actualizarYRecargar()}
               disabled={cargando}
-              className="bg-green-800"
+              className="bg-blue-800"
               
             >
               <RefreshCw size={16} className={cargando ? "animate-spin" : ""} />
@@ -275,7 +275,7 @@ export default function ListaAlumnosPage() {
                         <SubmitButton
                           type="button"
                           onClick={() => irDetalle(it.gym_alumno_id)}
-                          className="bg-green-800"
+                          className="bg-blue-800"
                         >
                           Ver
                         </SubmitButton>
@@ -304,7 +304,7 @@ export default function ListaAlumnosPage() {
                 type="button"
                 onClick={() => setPage((x) => Math.max(1, x - 1))}
                 disabled={pag.page <= 1}
-                className="bg-green-800"
+                className="bg-blue-800"
               >
                 <ChevronLeft size={16} />
                 Anterior
@@ -314,7 +314,7 @@ export default function ListaAlumnosPage() {
                 type="button"
                 onClick={() => setPage((x) => Math.min(pag.totalPages || x + 1, x + 1))}
                 disabled={pag.page >= (pag.totalPages || 1)}
-                className="bg-green-800"
+                className="bg-blue-800"
               >
                 Siguiente
                 <ChevronRight size={16} />

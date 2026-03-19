@@ -1,8 +1,12 @@
 import { useState, useEffect } from "react";
 import { kioskIngreso } from "../api/kiosk_api.js";
+import { getAlumnosCumples } from "../api/alumnos_api.js";
+
 import KioskResultModal from "../components/modal/kiosk_result_modal.jsx";
 import KioskErrorModal from "../components/modal/kiosk_error_modal.jsx";
 import SubmitButton from "../components/form/submit_button.jsx";
+import AlertasDropdown from "../components/alertas/AlertasDropdown.jsx";
+
 import { BadgeCheck, TriangleAlert } from "lucide-react";
 
 import sonidoOk from "../sounds/IngresoCorrecto.m4a";
@@ -14,6 +18,12 @@ export default function KioskPage() {
   const [cargando, setCargando] = useState(false);
   const [mostrarOk, setMostrarOk] = useState(false);
   const [mostrarError, setMostrarError] = useState(false);
+
+  // 🎂 cumpleaños
+  const [cumples, setCumples] = useState({
+    hoy: [],
+    proximos: [],
+  });
 
   const dniLimpio = dni.trim();
   const dniValido = dniLimpio.length >= 6;
@@ -63,6 +73,27 @@ export default function KioskPage() {
     }
   }
 
+  // 🎂 cargar cumpleaños
+  useEffect(() => {
+    async function cargarCumples() {
+      try {
+        const data = await getAlumnosCumples({ dias: 3 });
+        setCumples({
+          hoy: data.hoy || [],
+          proximos: data.proximos || [],
+        });
+      } catch (error) {
+        console.error("Error cargando cumpleaños:", error);
+      }
+    }
+
+    cargarCumples();
+
+    // 🔄 refrescar cada 1 min
+    const interval = setInterval(cargarCumples, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
   useEffect(() => {
     if (mostrarOk || mostrarError) {
       const t = setTimeout(() => {
@@ -80,13 +111,20 @@ export default function KioskPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-100 via-blue-50 to-blue-100">
-      <div className="min-h-screen flex items-center justify-center p-4">
+      <div className="relative min-h-screen flex items-center justify-center p-4">
+        
+        {/* 🔔 ALERTAS */}
+        <div className="absolute top-4 right-4 z-50">
+          <AlertasDropdown hoy={cumples.hoy} proximos={cumples.proximos} />
+        </div>
+
         <div className="w-full max-w-md rounded-3xl border border-black/5 bg-white/80 shadow-2xl backdrop-blur p-6 text-center">
+          
           <div className="inline-flex items-center gap-2 rounded-full bg-blue-600/10 px-4 py-1 text-sm font-semibold text-blue-700">
             Control de ingreso
           </div>
 
-          <h1 className="mt-4 text-3xl font-extrabold tracking-tight text-gray-900">
+          <h1 className="mt-4 text-3xl font-extrabold text-gray-900">
             Ingreso por DNI
           </h1>
 
@@ -101,12 +139,7 @@ export default function KioskPage() {
               value={dni}
               onChange={(e) => setDni(e.target.value)}
               placeholder="DNI"
-              className={[
-                "w-full rounded-2xl px-4 py-4 text-3xl text-gray-900",
-                "border border-gray-300 bg-white",
-                "outline-none focus:ring-2 focus:ring-blue-500/60",
-                "placeholder:text-gray-400 text-center font-bold",
-              ].join(" ")}
+              className="w-full rounded-2xl px-4 py-4 text-3xl text-gray-900 border border-gray-300 bg-white text-center font-bold focus:ring-2 focus:ring-blue-500/60"
             />
 
             <div className="flex justify-center">
@@ -117,22 +150,16 @@ export default function KioskPage() {
                 disabled={!dniValido}
               />
             </div>
-
-            {!dniValido && (
-              <div className="text-xs text-gray-500">
-                Ingresá al menos 6 dígitos.
-              </div>
-            )}
           </form>
 
+          {/* RESULTADO */}
           {resp && (
             <div
-              className={[
-                "mt-6 rounded-2xl border p-4 text-left",
+              className={`mt-6 rounded-2xl border p-4 text-left ${
                 ok
                   ? "border-blue-500/30 bg-blue-50"
-                  : "border-red-500/30 bg-red-50",
-              ].join(" ")}
+                  : "border-red-500/30 bg-red-50"
+              }`}
             >
               <div className="flex items-center gap-2 font-bold">
                 {ok ? (
@@ -149,13 +176,13 @@ export default function KioskPage() {
               </div>
 
               <div className="mt-2 text-sm text-gray-700">
-                {resp?.mensaje || resp?.motivo}
+                {resp?.mensaje}
               </div>
 
               {(alumno?.nombre || alumno?.apellido) && (
                 <div className="mt-3 text-sm text-gray-700">
                   Alumno:{" "}
-                  <b className="text-gray-900">
+                  <b>
                     {alumno?.nombre} {alumno?.apellido}
                   </b>
                 </div>
@@ -164,13 +191,14 @@ export default function KioskPage() {
               {plan?.ingresos_restantes != null && (
                 <div className="mt-1 text-sm text-gray-700">
                   Ingresos restantes:{" "}
-                  <b className="text-gray-900">{plan.ingresos_restantes}</b>
+                  <b>{plan.ingresos_restantes}</b>
                 </div>
               )}
             </div>
           )}
         </div>
 
+        {/* MODALES */}
         {mostrarOk && resp?.ok && (
           <KioskResultModal
             resp={resp}

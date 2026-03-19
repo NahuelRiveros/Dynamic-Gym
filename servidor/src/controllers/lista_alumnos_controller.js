@@ -1,6 +1,8 @@
 // src/controllers/lista_alumnos_controller.js
 import { listarAlumnos } from "../services/lista_alumnos_service.js";
 import { obtenerDetalleAlumno } from "../services/alumno_detalle_service.js";
+import { obtenerAlumnosCumples } from "../services/alumno_cumples.js";
+
 function toInt(v, def) {
   const n = Number(v);
   return Number.isFinite(n) ? Math.trunc(n) : def;
@@ -52,5 +54,18 @@ export async function detalleAlumno(req, res, next) {
     return res.json(r);
   } catch (err) {
     next(err);
+  }
+}
+
+export async function alumnosCumples(req, res, next) {
+  try {
+    const dias = Number(req.query.dias ?? 30);
+    const incluirMes = String(req.query.incluirMes ?? "false") === "true";
+
+    const data = await obtenerAlumnosCumples({ dias, incluirMes });
+
+    return res.status(200).json(data);
+  } catch (error) {
+    next(error);
   }
 }

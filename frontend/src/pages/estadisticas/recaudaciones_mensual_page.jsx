@@ -72,7 +72,7 @@ export default function RecaudacionCalendario() {
           {/* Header */}
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
-              <div className="inline-flex items-center gap-2 rounded-full bg-green-600/10 px-4 py-1 text-sm font-semibold text-green-700">
+              <div className="inline-flex items-center gap-2 rounded-full bg-blue-600/10 px-4 py-1 text-sm font-semibold text-blue-700">
                 <BarChart3 size={16} />
                 Estadísticas
               </div>
@@ -176,12 +176,12 @@ function MonthCard({ mes, total, maxMes, onClick }) {
       className={[
         "group text-left rounded-3xl border bg-white p-5 shadow-sm transition",
         "hover:shadow-md hover:-translate-y-px",
-        "focus:outline-none focus:ring-2 focus:ring-green-500/40",
+        "focus:outline-none focus:ring-2 focus:ring-blue-500/40",
       ].join(" ")}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-green-600/10 text-green-700">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-600/10 text-blue-700">
             <Dumbbell size={18} />
           </div>
 
@@ -210,7 +210,7 @@ function MonthCard({ mes, total, maxMes, onClick }) {
           <div
             className={[
               "h-full rounded-full",
-              tiene ? "bg-green-500" : "bg-gray-300",
+              tiene ? "bg-blue-500" : "bg-gray-300",
             ].join(" ")}
             style={{ width: `${pct}%` }}
           />

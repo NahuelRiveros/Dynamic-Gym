@@ -61,7 +61,7 @@ export default function DetalleAlumnoPage() {
               <SubmitButton
                 type="button"
                 onClick={() => nav(-1)}
-                className="bg-green-800"
+                className="bg-blue-800"
               >
                 <span className="inline-flex items-center gap-2">
                   <ArrowLeft size={16} />
@@ -86,7 +86,7 @@ export default function DetalleAlumnoPage() {
               type="button"
               onClick={cargar}
               disabled={cargando}
-              className="bg-green-800"
+              className="bg-blue-800"
             >
               <RefreshCw size={16} className={cargando ? "animate-spin" : ""} />
               {cargando ? "Cargando..." : "Actualizar"}

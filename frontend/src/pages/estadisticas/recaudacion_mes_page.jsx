@@ -143,13 +143,13 @@ export default function RecaudacionCalendarioDia() {
                     key={dia}
                     className={[
                       "rounded-2xl border p-3 min-h-22.5 transition",
-                      tiene ? "bg-green-50 border-green-300" : "bg-white border-gray-200",
+                      tiene ? "bg-blue-50 border-blue-300" : "bg-white border-gray-200",
                     ].join(" ")}
                   >
                     <div className="text-xs font-bold text-gray-600">{dia}</div>
 
                     {tiene ? (
-                      <div className="mt-2 text-sm font-extrabold text-green-700">
+                      <div className="mt-2 text-sm font-extrabold text-blue-700">
                         {money(total)}
                       </div>
                     ) : (

@@ -2,8 +2,10 @@ import heroGym1 from "../assets/hero_gym1.jpeg";
 import heroGym2 from "../assets/hero_gym2.jpeg";
 import heroGym3 from "../assets/hero_gym3.jpeg";
 import heroGym4 from "../assets/hero_gym4.jpeg";
+import dynamicLogo from "../assets/dynamicLogo.png"
 
 export const images = {
+dynamicLogo,
 heroGym1,
 heroGym2,
 heroGym3,

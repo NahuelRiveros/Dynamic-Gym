@@ -19,3 +19,8 @@ export async function actualizarEstadosAlumnos() {
   const r = await http.post("/admin/alumnos/actualizar-estados");
   return r.data;
 }
+
+export async function getAlumnosCumples(params = {}){
+  const r = await http.get("/alumnos/cumples", { params })
+  return r.data;
+}

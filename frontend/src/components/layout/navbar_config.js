@@ -1,8 +1,9 @@
+import {images} from "../../assets/index.js"
 export const navbar_config = {
   brand: {
     titulo: "Dynamic",
     subtitulo: "Dynamic",
-    logoUrl: "/src/assets/dynamicLogo.png",
+    logoUrl: images.dynamicLogo,
     mostrarTitulo: true,
     mostrarSubtitulo: false,
     linkTo: "/",
