@@ -58,3 +58,4 @@ ALTER COLUMN gym_log_estadoalumno_fechacambio
 TYPE timestamptz
 USING gym_log_estadoalumno_fechacambio AT TIME ZONE 'America/Argentina/Cordoba';
 
+

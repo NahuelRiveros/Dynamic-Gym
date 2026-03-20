@@ -1,4 +1,3 @@
-// src/services/pagos_service.js
 import { sequelize } from "../database/sequelize.js";
 import { QueryTypes, Op } from "sequelize";
 import {
@@ -28,7 +27,7 @@ function fechaISOArgentina(d = new Date()) {
 
 /**
  * Suma N días a una fecha ISO (YYYY-MM-DD) y devuelve YYYY-MM-DD
- * (trabajamos sobre UTC para que sea estable y no dependa del server)
+ * Trabajamos sobre UTC para evitar depender del server
  */
 function sumarDiasISO(fechaISO, dias) {
   const [y, m, d] = String(fechaISO).split("-").map(Number);
@@ -39,8 +38,8 @@ function sumarDiasISO(fechaISO, dias) {
 
 /**
  * Registrar pago por DNI.
- * - Inserta en gym_fecha_disponible (fechacambio lo pone PG en BA)
- * - Actualiza alumno (fechacambio lo pone PG en BA) + lo habilita
+ * - Inserta en gym_fecha_disponible
+ * - Actualiza alumno y lo habilita
  * - Log de cambio de estado si correspondía
  *
  * Lógica:
@@ -52,17 +51,53 @@ export async function registrarPagoPorDni({
   tipo_plan_id,
   monto_pagado,
   metodo_pago,
-  modificado_por = "SYSTEM", // ideal: req.user.email
+  usuario_id_cobro,
+  modificado_por = "SYSTEM",
 }) {
   const dni = normalizarDocumento(documento);
   const dniNum = Number(dni);
 
-
   if (!Number.isFinite(dniNum) || dniNum <= 0) {
-    return { ok: false, codigo: "VALIDACION", mensaje: "Documento inválido" };
+    return {
+      ok: false,
+      codigo: "VALIDACION",
+      mensaje: "Documento inválido",
+    };
   }
 
-  const hoyISO = fechaISOArgentina(new Date()); // YYYY-MM-DD en BA
+  if (!Number.isFinite(Number(tipo_plan_id)) || Number(tipo_plan_id) <= 0) {
+    return {
+      ok: false,
+      codigo: "VALIDACION",
+      mensaje: "tipo_plan_id inválido",
+    };
+  }
+
+  if (!Number.isFinite(Number(monto_pagado)) || Number(monto_pagado) <= 0) {
+    return {
+      ok: false,
+      codigo: "VALIDACION",
+      mensaje: "monto_pagado inválido",
+    };
+  }
+
+  if (!String(metodo_pago ?? "").trim()) {
+    return {
+      ok: false,
+      codigo: "VALIDACION",
+      mensaje: "metodo_pago es obligatorio",
+    };
+  }
+
+  if (!Number.isFinite(Number(usuario_id_cobro)) || Number(usuario_id_cobro) <= 0) {
+    return {
+      ok: false,
+      codigo: "USUARIO_COBRO_INVALIDO",
+      mensaje: "No se pudo identificar el usuario que registra el pago",
+    };
+  }
+
+  const hoyISO = fechaISOArgentina(new Date());
 
   return sequelize.transaction(async (t) => {
     // 1) Persona por DNI
@@ -70,7 +105,7 @@ export async function registrarPagoPorDni({
       where: { gym_persona_documento: dniNum },
       transaction: t,
     });
-    
+
     if (!persona) {
       return {
         ok: false,
@@ -94,8 +129,8 @@ export async function registrarPagoPorDni({
       };
     }
 
-    // 3) Tipo plan
-    const tipoPlan = await GymCatTipoPlan.findByPk(tipo_plan_id, {
+    // 3) Tipo de plan
+    const tipoPlan = await GymCatTipoPlan.findByPk(Number(tipo_plan_id), {
       transaction: t,
     });
 
@@ -117,6 +152,7 @@ export async function registrarPagoPorDni({
         mensaje: "El plan tiene días inválidos (dias_totales)",
       };
     }
+
     if (!Number.isFinite(ingresosTotales) || ingresosTotales < 0) {
       return {
         ok: false,
@@ -125,7 +161,7 @@ export async function registrarPagoPorDni({
       };
     }
 
-    // 4) Plan vigente HOY (lock) - tomar el MÁS NUEVO (inicio DESC)
+    // 4) Plan vigente HOY (tomar el más nuevo vigente)
     const planVigente = await GymFechaDisponible.findOne({
       where: {
         gym_fecha_rela_alumno: alumno.gym_alumno_id,
@@ -133,7 +169,7 @@ export async function registrarPagoPorDni({
         gym_fecha_fin: { [Op.gte]: hoyISO },
       },
       order: [
-        ["gym_fecha_inicio", "DESC"], // ✅ clave: más nuevo vigente
+        ["gym_fecha_inicio", "DESC"],
         ["gym_fecha_id", "DESC"],
       ],
       transaction: t,
@@ -145,10 +181,9 @@ export async function registrarPagoPorDni({
       ? sumarDiasISO(String(planVigente.gym_fecha_fin).slice(0, 10), 1)
       : hoyISO;
 
-    // fin inclusivo: inicio + (diasTotales - 1)
     const fin = sumarDiasISO(inicio, diasTotales - 1);
 
-    // 6) INSERT gym_fecha_disponible (timestamps los pone PG en BA)
+    // 6) Insertar pago / vigencia
     const [rowsFD] = await sequelize.query(
       `
       INSERT INTO gym_fecha_disponible (
@@ -160,7 +195,8 @@ export async function registrarPagoPorDni({
         gym_fecha_ingresosdisponibles,
         gym_fecha_metodopago,
         gym_fecha_fechacambio,
-        gym_fecha_rela_tipoplan
+        gym_fecha_rela_tipoplan,
+        gym_fecha_rela_usuario_cobro
       )
       VALUES (
         :alumno_id,
@@ -171,9 +207,13 @@ export async function registrarPagoPorDni({
         :ingresos_totales,
         :metodo_pago,
         (now() AT TIME ZONE '${TZ_BA}'),
-        :tipo_plan_id
+        :tipo_plan_id,
+        :usuario_id_cobro
       )
-      RETURNING gym_fecha_id, gym_fecha_fechacambio
+      RETURNING
+        gym_fecha_id,
+        gym_fecha_fechacambio,
+        gym_fecha_rela_usuario_cobro
       `,
       {
         type: QueryTypes.INSERT,
@@ -185,34 +225,36 @@ export async function registrarPagoPorDni({
           fin,
           dias_totales: diasTotales,
           ingresos_totales: ingresosTotales,
-          metodo_pago: String(metodo_pago ?? ""),
+          metodo_pago: String(metodo_pago ?? "").trim(),
           tipo_plan_id: tipoPlan.gym_cat_tipoplan_id,
+          usuario_id_cobro: Number(usuario_id_cobro),
         },
       }
     );
 
     const filaFD = Array.isArray(rowsFD) ? rowsFD[0] : rowsFD;
     const fechaId = filaFD?.gym_fecha_id ?? null;
+    const fechaCambio = filaFD?.gym_fecha_fechacambio ?? null;
+    const usuarioCobroId = filaFD?.gym_fecha_rela_usuario_cobro ?? Number(usuario_id_cobro);
 
-    // 7) UPDATE alumno: set tipoplan y habilitar
-    // 7) UPDATE alumno (con Sequelize, no SQL crudo)
+    // 7) Actualizar alumno: plan actual + estado habilitado
     const estadoAnterior = Number(alumno.gym_alumno_rela_estadoalumno);
 
     await alumno.update(
       {
         gym_alumno_rela_tipoplan: tipoPlan.gym_cat_tipoplan_id,
         gym_alumno_rela_estadoalumno: ESTADO_HABILITADO,
-        // gym_alumno_fechacambio: se actualiza por default en DB o lo podés setear si querés
       },
       { transaction: t }
     );
 
-    // ✅ comprobar de inmediato
+    // Debug opcional
     console.log("[PAGO] estadoAnterior:", estadoAnterior);
     console.log("[PAGO] estadoNuevo (obj):", alumno.gym_alumno_rela_estadoalumno);
 
-    // ✅ leer desde DB (para estar 100% seguro)
-    const alumnoDB = await GymAlumno.findByPk(alumno.gym_alumno_id, { transaction: t });
+    const alumnoDB = await GymAlumno.findByPk(alumno.gym_alumno_id, {
+      transaction: t,
+    });
     console.log("[PAGO] estadoNuevo (DB):", alumnoDB?.gym_alumno_rela_estadoalumno);
 
     // 8) Log si cambió el estado
@@ -227,7 +269,8 @@ export async function registrarPagoPorDni({
           gym_log_estadoalumno_motivo,
           gym_log_estadoalumno_fuente,
           gym_log_estadoalumno_modificado_por
-        ) VALUES (
+        )
+        VALUES (
           :alumno_id,
           :anterior,
           :nuevo,
@@ -235,7 +278,7 @@ export async function registrarPagoPorDni({
           :motivo,
           :fuente,
           :modificado_por
-        );
+        )
         `,
         {
           type: QueryTypes.INSERT,
@@ -271,7 +314,9 @@ export async function registrarPagoPorDni({
       pago: {
         fecha_id: fechaId,
         monto_pagado: Number(monto_pagado),
-        metodo_pago: String(metodo_pago ?? ""),
+        metodo_pago: String(metodo_pago ?? "").trim(),
+        usuario_id_cobro: usuarioCobroId,
+        fecha_cambio: fechaCambio,
       },
       plan: {
         tipo_plan_id: tipoPlan.gym_cat_tipoplan_id,
@@ -293,18 +338,18 @@ export async function registrarPagoPorDni({
 
 /**
  * Preview pago por DNI:
- * Devuelve alumno + plan vigente (si existe) para confirmar antes de pagar.
- *
- * Acá usamos CURRENT_DATE del servidor PG.
- * Si querés que sea 100% BA aunque el server no esté en BA:
- * reemplazamos CURRENT_DATE por: (now() AT TIME ZONE 'America/Argentina/Buenos_Aires')::date
+ * Devuelve alumno + último pago (si existe) para confirmar antes de pagar.
  */
 export async function previewPagoPorDni({ documento }) {
   const dni = normalizarDocumento(documento);
   const dniNum = Number(dni);
 
   if (!Number.isFinite(dniNum) || dniNum <= 0) {
-    return { ok: false, codigo: "VALIDACION", mensaje: "Documento inválido" };
+    return {
+      ok: false,
+      codigo: "VALIDACION",
+      mensaje: "Documento inválido",
+    };
   }
 
   const sql = `
@@ -320,7 +365,6 @@ export async function previewPagoPorDni({ documento }) {
       p.gym_persona_email,
       p.gym_persona_celular,
 
-      -- 👇 último pago (más reciente)
       flast.gym_fecha_id AS pago_id,
       flast.gym_fecha_inicio AS pago_inicio,
       flast.gym_fecha_fin AS pago_fin,
@@ -347,7 +391,7 @@ export async function previewPagoPorDni({ documento }) {
         f.gym_fecha_fechacambio
       FROM gym_fecha_disponible f
       WHERE f.gym_fecha_rela_alumno = a.gym_alumno_id
-      ORDER BY f.gym_fecha_id DESC  -- ✅ último pago real
+      ORDER BY f.gym_fecha_id DESC
       LIMIT 1
     ) flast ON TRUE
 
@@ -355,7 +399,7 @@ export async function previewPagoPorDni({ documento }) {
       ON tp.gym_cat_tipoplan_id = flast.gym_fecha_rela_tipoplan
 
     WHERE p.gym_persona_documento = :dniNum
-    LIMIT 1;
+    LIMIT 1
   `;
 
   const rows = await sequelize.query(sql, {
@@ -364,11 +408,21 @@ export async function previewPagoPorDni({ documento }) {
   });
 
   const it = rows?.[0];
+
   if (!it) {
-    return { ok: false, codigo: "NO_EXISTE", mensaje: "No existe una persona con ese documento" };
+    return {
+      ok: false,
+      codigo: "NO_EXISTE",
+      mensaje: "No existe una persona con ese documento",
+    };
   }
+
   if (!it.gym_alumno_id) {
-    return { ok: false, codigo: "NO_ES_ALUMNO", mensaje: "La persona existe pero no es alumno" };
+    return {
+      ok: false,
+      codigo: "NO_ES_ALUMNO",
+      mensaje: "La persona existe pero no es alumno",
+    };
   }
 
   return {
@@ -393,7 +447,7 @@ export async function previewPagoPorDni({ documento }) {
           tipo_desc: it.plan_tipo_desc,
           monto_pagado: it.monto_pagado,
           metodo_pago: it.metodo_pago,
-          fecha_pago: it.fecha_pago, // timestamp
+          fecha_pago: it.fecha_pago,
         }
       : null,
   };

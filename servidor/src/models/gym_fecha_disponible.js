@@ -14,6 +14,7 @@ export const GymFechaDisponible = sequelize.define(
     gym_fecha_metodopago: { type: DataTypes.TEXT, allowNull: true },
     gym_fecha_fechacambio: { type: DataTypes.DATE, allowNull: true },
     gym_fecha_rela_tipoplan: { type: DataTypes.INTEGER, allowNull: false },
+    gym_fecha_rela_usuario_cobro: { type: DataTypes.INTEGER, allowNull: true },
   },
   {
     tableName: "gym_fecha_disponible",

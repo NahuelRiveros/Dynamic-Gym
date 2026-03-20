@@ -1,25 +1,36 @@
-// src/controllers/pagos_controller.js
 import { registrarPagoPorDni, previewPagoPorDni } from "../services/pagos_service.js";
 
 function esNumeroPositivo(n) {
   const x = Number(n);
   return Number.isFinite(x) && x > 0;
 }
+
 export async function previewPago(req, res, next) {
   try {
     const documento = String(req.query.documento ?? "").trim();
 
     if (!documento) {
-      return res.status(400).json({ ok: false, codigo: "VALIDACION", mensaje: "documento es obligatorio" });
+      return res.status(400).json({
+        ok: false,
+        codigo: "VALIDACION",
+        mensaje: "documento es obligatorio",
+      });
     }
+
     if (!/^\d+$/.test(documento.replace(/[.\s]/g, ""))) {
-      return res.status(400).json({ ok: false, codigo: "VALIDACION", mensaje: "documento inválido (solo números)" });
+      return res.status(400).json({
+        ok: false,
+        codigo: "VALIDACION",
+        mensaje: "documento inválido (solo números)",
+      });
     }
 
     const r = await previewPagoPorDni({ documento });
 
     if (!r.ok) {
-      if (r.codigo === "NO_EXISTE" || r.codigo === "NO_ES_ALUMNO") return res.status(404).json(r);
+      if (r.codigo === "NO_EXISTE" || r.codigo === "NO_ES_ALUMNO") {
+        return res.status(404).json(r);
+      }
       return res.status(409).json(r);
     }
 
@@ -33,8 +44,17 @@ export async function registrarPago(req, res, next) {
   try {
     const { documento, tipo_plan_id, monto_pagado, metodo_pago } = req.body;
 
-    console.log(req.body)
-    // ✅ Validaciones básicas
+    console.log(req.body);
+    console.log("req.user:", req.user);
+
+    if (!req.user?.usuario_id) {
+      return res.status(401).json({
+        ok: false,
+        codigo: "NO_AUTH_USUARIO",
+        mensaje: "No se pudo identificar el usuario que registra el pago",
+      });
+    }
+
     if (!documento || typeof documento !== "string") {
       return res.status(400).json({
         ok: false,
@@ -67,7 +87,6 @@ export async function registrarPago(req, res, next) {
       });
     }
 
-    // metodo_pago opcional pero recomendado
     const metodo = (metodo_pago ?? "").toString().trim();
     if (!metodo) {
       return res.status(400).json({
@@ -77,24 +96,21 @@ export async function registrarPago(req, res, next) {
       });
     }
 
-    // ✅ Llamada al service
     const resultado = await registrarPagoPorDni({
-    documento: documento.trim(),
-    tipo_plan_id: Number(tipo_plan_id),
-    monto_pagado: Number(monto_pagado),
-    metodo_pago: metodo,
-    modificado_por: req.user?.email || "SYSTEM",
+      documento: documento.trim(),
+      tipo_plan_id: Number(tipo_plan_id),
+      monto_pagado: Number(monto_pagado),
+      metodo_pago: metodo,
+      usuario_id_cobro: req.user.usuario_id,
+      modificado_por: req.user?.email || "SYSTEM",
     });
-    // ✅ Manejo de respuestas del service
+
     if (!resultado.ok) {
       if (resultado.codigo === "NO_EXISTE") return res.status(404).json(resultado);
       if (resultado.codigo === "NO_ES_ALUMNO") return res.status(404).json(resultado);
       if (resultado.codigo === "PLAN_NO_EXISTE") return res.status(404).json(resultado);
-
-      // errores de negocio típicos
       if (resultado.codigo === "VALIDACION") return res.status(400).json(resultado);
 
-      // fallback
       return res.status(409).json(resultado);
     }
 
