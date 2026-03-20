@@ -31,7 +31,17 @@ export const navbar_config = {
         { label: "Listado de Alumnos", to: "/admin/estadisticas/alumnos", requiereAuth: true, roles: ["staff", "admin"] },
       ],
     },
+    {
+      id: "Otros",
+      labelNoAuth: "Otros",
+      labelAuth: "Otros",
+      items: [
+        { label: "Planes", to: "/admin/planesViews", requiereAuth: true, roles: ["admin"] },
+        { label: "Personal", to: "/admin/staffManager", requiereAuth: true, roles: ["admin"] },
+      ],
+    },
   ],
+  
 
   labels: {
     menuAbrir: "Abrir menú",

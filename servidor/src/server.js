@@ -8,6 +8,8 @@ console.log("JWT_SECRET:", env.JWT_SECRET);
 
 async function main() {
   await sequelize.authenticate();
+  await sequelize.query(`SET TIME ZONE 'America/Argentina/Cordoba'`);
+
   console.log("✅ DB conectada");
 
   iniciarCronEstadoAlumnos();

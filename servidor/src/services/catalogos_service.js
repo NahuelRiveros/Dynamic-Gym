@@ -1,9 +1,17 @@
-import { GymCatTipoDocumento, GymCatSexo, GymCatTipoPersona, GymCatTipoPlan } from "../models/index.js";
+import {
+  GymCatTipoDocumento,
+  GymCatSexo,
+  GymCatTipoPersona,
+  GymCatTipoPlan,
+} from "../models/index.js";
 
 export async function obtenerCatalogos() {
   const [tiposDocumento, sexos, tiposPersona, tiposPlan] = await Promise.all([
     GymCatTipoDocumento.findAll({
-      attributes: ["gym_cat_tipodocumento_id", "gym_cat_tipodocumento_descripcion"],
+      attributes: [
+        "gym_cat_tipodocumento_id",
+        "gym_cat_tipodocumento_descripcion",
+      ],
       order: [["gym_cat_tipodocumento_descripcion", "ASC"]],
     }),
     GymCatSexo.findAll({
@@ -20,9 +28,14 @@ export async function obtenerCatalogos() {
         "gym_cat_tipoplan_descripcion",
         "gym_cat_tipoplan_dias_totales",
         "gym_cat_tipoplan_ingresos",
+        "gym_cat_tipoplan_precio",
       ],
+      where: {
+        gym_cat_tipoplan_activo: true,
+      },
       order: [["gym_cat_tipoplan_descripcion", "ASC"]],
     }),
+    
   ]);
 
   return {
@@ -43,6 +56,7 @@ export async function obtenerCatalogos() {
       label: x.gym_cat_tipoplan_descripcion,
       dias_totales: x.gym_cat_tipoplan_dias_totales,
       ingresos: x.gym_cat_tipoplan_ingresos,
+      precio: Number(x.gym_cat_tipoplan_precio),
     })),
   };
 }

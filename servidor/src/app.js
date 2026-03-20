@@ -37,6 +37,7 @@ export function createApp() {
         mensaje: "Body JSON inválido",
       });
     }
+
     console.error(err);
     return res.status(500).json({
       ok: false,

@@ -18,3 +18,14 @@ export const sequelize = env.DATABASE_URL
       logging: false,
       dialectOptions: sslOptions,
     });
+
+export async function conectarDB() {
+  try {
+    await sequelize.authenticate();
+    await sequelize.query(`SET TIME ZONE 'America/Argentina/Cordoba'`);
+    console.log("✅ Base de datos conectada");
+  } catch (error) {
+    console.error("❌ Error al conectar la base de datos:", error);
+    throw error;
+  }
+}

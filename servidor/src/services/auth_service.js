@@ -71,7 +71,7 @@ export async function login({ email, password }) {
 
   console.log("✅ LOGIN OK para:", emailNorm);
   // 5) Roles
-  const rolesRows = await usuario.getGymRols({
+  const rolesRows = await usuario.getRoles({
     attributes: ["gym_rol_codigo"],
     joinTableAttributes: [],
   });

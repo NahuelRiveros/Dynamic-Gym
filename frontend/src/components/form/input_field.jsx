@@ -3,6 +3,9 @@ export default function InputField({
   name,
   register,
   error,
+  disabled = false,
+  readOnly = false,
+  disabledVisual = false,
   type = "text",
   placeholder = "",
   inputMode,
@@ -15,6 +18,11 @@ export default function InputField({
   const errorStyles = error
     ? "border-red-400 focus:ring-red-200"
     : "border-blue-500 focus:ring-blue-500";
+
+  const disabledStyles =
+    disabled || readOnly || disabledVisual
+      ? "bg-gray-100 text-gray-500 cursor-not-allowed border-gray-300 focus:ring-0"
+      : "";
 
   return (
     <div>
@@ -30,11 +38,13 @@ export default function InputField({
         placeholder={placeholder}
         inputMode={inputMode}
         autoComplete={autoComplete}
-        className={`${baseStyles} ${errorStyles} ${className}`}
+        disabled={disabled}
+        readOnly={readOnly}
+        className={`${baseStyles} ${errorStyles} ${disabledStyles} ${className}`}
       />
 
       {error && (
-        <p className="text-sm text-red-600 mt-1">{error}</p>
+        <p className="mt-1 text-sm text-red-600">{error}</p>
       )}
     </div>
   );

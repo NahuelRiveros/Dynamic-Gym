@@ -1,10 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import PagoSuccessModal from "../components/modal/pago_success_modal.jsx";
 import { getCatalogos } from "../api/catalogos_api";
 import { registrarPago, previewPago } from "../api/pagos_api";
 
-// ✅ tus componentes reutilizables
+// componentes reutilizables
 import FormCard from "../components/form/form_card";
 import FormError from "../components/form/form_error";
 import InputField from "../components/form/input_field";
@@ -23,7 +23,6 @@ export default function RegistrarPagoPage() {
   const [alumno, setAlumno] = useState(null);
   const [planVigente, setPlanVigente] = useState(null);
 
-  // ✅ modal
   const [modalOpen, setModalOpen] = useState(false);
   const [ultimoPago, setUltimoPago] = useState(null);
 
@@ -43,6 +42,7 @@ export default function RegistrarPagoPage() {
   });
 
   const documento = watch("documento");
+  const tipoPlanId = watch("tipo_plan_id");
 
   function limpiarMensajes() {
     setError(null);
@@ -78,7 +78,6 @@ export default function RegistrarPagoPage() {
     cargarPlanes();
   }, []);
 
-  // ✅ Buscar alumno primero
   async function buscarAlumno() {
     limpiarMensajes();
     setAlumno(null);
@@ -97,7 +96,8 @@ export default function RegistrarPagoPage() {
         setError(r?.mensaje || "No se pudo buscar el alumno");
         return;
       }
-      console.log(r)
+
+      console.log(r);
 
       setAlumno(r.alumno);
       setPlanVigente(r.ultimo_pago || null);
@@ -112,11 +112,57 @@ export default function RegistrarPagoPage() {
     }
   }
 
-  // ✅ Registrar pago (solo si hay alumno confirmado)
+  const planSeleccionado = useMemo(() => {
+    return planes.find((p) => Number(p.value) === Number(tipoPlanId)) || null;
+  }, [planes, tipoPlanId]);
+
+  const diasSeleccionados = Number(planSeleccionado?.dias_totales ?? 0);
+  const ingresosSeleccionados = Number(planSeleccionado?.ingresos ?? 0);
+
+  // preparado para futuro soporte de precio
+  const precioSeleccionado = Number(
+    planSeleccionado?.precio ??
+      planSeleccionado?.monto ??
+      planSeleccionado?.precio_plan ??
+      0
+  );
+
+  const nuevoVencimiento = useMemo(() => {
+    if (!planSeleccionado || !diasSeleccionados) return null;
+
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+
+    let fechaBase = new Date(hoy);
+
+    // Si aún tiene plan vigente, extiende desde ahí
+    // if (planVigente?.fin) {
+    //   const finActual = new Date(planVigente.fin);
+    //   finActual.setHours(0, 0, 0, 0);
+
+    //   if (!Number.isNaN(finActual.getTime()) && finActual >= hoy) {
+    //     fechaBase = finActual;
+    //   }
+    // }
+
+    const fechaCalculada = new Date(fechaBase);
+    fechaCalculada.setDate(fechaCalculada.getDate() + diasSeleccionados);
+
+    return fechaCalculada;
+  }, [planSeleccionado, diasSeleccionados, planVigente]);
+
+  // futuro: si el plan trae precio, autocompleta monto
+  useEffect(() => {
+    if (!planSeleccionado) return;
+
+    if (precioSeleccionado > 0) {
+      setValue("monto_pagado", String(precioSeleccionado));
+    }
+  }, [planSeleccionado, precioSeleccionado, setValue]);
+
   async function onSubmit(values) {
     limpiarMensajes();
     console.log("metodo_pago raw:", values.metodo_pago, typeof values.metodo_pago);
-
 
     if (!alumno?.alumno_id) {
       setError("Primero buscá y confirmá el alumno por DNI.");
@@ -157,11 +203,9 @@ export default function RegistrarPagoPage() {
         return;
       }
 
-      // ✅ guardar resultado y abrir modal
       setUltimoPago(r);
       setModalOpen(true);
 
-      // ✅ limpiar formulario (modo seguro: limpiar TODO)
       limpiarFormularioCompleto();
       setOkMsg(null);
     } catch (e) {
@@ -187,7 +231,7 @@ export default function RegistrarPagoPage() {
             ) : null}
           </div>
 
-          {/* ✅ BUSQUEDA ALUMNO */}
+          {/* Búsqueda alumno */}
           <div className="mt-5 flex flex-col gap-3 justify-center items-center">
             <InputField
               label="DNI"
@@ -206,11 +250,11 @@ export default function RegistrarPagoPage() {
               loading={cargando}
               label="Buscar alumno"
               loadingLabel="Buscando..."
-              className="w-40 "
+              className="w-40"
             />
           </div>
 
-          {/* ✅ Preview alumno */}
+          {/* Preview alumno */}
           {alumno && (
             <div className="mt-5 rounded-2xl border bg-white p-4">
               <div className="text-sm font-semibold text-gray-700">Alumno</div>
@@ -222,37 +266,58 @@ export default function RegistrarPagoPage() {
                 <b>{alumno.estado_desc || alumno.estado_id}</b>
               </div>
 
-              <div className="mt-3 text-sm">
-                {planVigente ? (
-                  <div className="rounded-xl border p-3">
-                    <div>
-                      <b>Plan vigente:</b> {planVigente.tipo_desc || "—"}
-                    </div>
-                    <div>
-                      <b>Vence:</b> {formatearFechaAR(planVigente.fin)}
-                    </div>
-                    <div>
-                      <b>Ingresos:</b> {planVigente.ingresos_disponibles ?? "—"}
-                    </div>
+              <div className="mt-3 text-sm space-y-3">
+                <div className="rounded-xl border p-3">
+                  <div>
+                    <b>Plan vigente:</b> {planVigente?.tipo_desc || "Sin plan vigente"}
                   </div>
-                ) : (
-                  <div className="text-gray-600">Sin plan vigente.</div>
+                  <div>
+                    <b>Vence actual:</b>{" "}
+                    {planVigente?.fin ? formatearFechaAR(planVigente.fin) : "—"}
+                  </div>
+                  <div>
+                    <b>Ingresos actuales:</b>{" "}
+                    {planVigente?.ingresos_disponibles ?? "—"}
+                  </div>
+                </div>
+
+                {planSeleccionado && (
+                  <div className="rounded-xl border bg-blue-50 p-3 text-blue-800">
+                    <div>
+                      <b>Nuevo plan:</b> {planSeleccionado.label}
+                    </div>
+                    <div>
+                      <b>Días del plan:</b> {diasSeleccionados || "—"}
+                    </div>
+                    <div>
+                      <b>Ingresos del plan:</b> {ingresosSeleccionados || "—"}
+                    </div>
+                    <div>
+                      <b>Nuevo vencimiento estimado:</b>{" "}
+                      {nuevoVencimiento ? formatearFechaAR(nuevoVencimiento) : "—"}
+                    </div>
+                    {precioSeleccionado > 0 && (
+                      <div>
+                        <b>Precio sugerido:</b> ${precioSeleccionado}
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
             </div>
           )}
 
-          {/* ✅ FORM PAGO */}
+          {/* Form pago */}
           <form
             onSubmit={handleSubmit(onSubmit)}
-            className="mt-5 flex flex-col  grid-cols-1 gap-3 " 
+            className="mt-5 flex flex-col grid-cols-1 gap-3"
           >
             <SelectField
               label="Plan"
               name="tipo_plan_id"
               register={register}
               error={errors.tipo_plan_id?.message}
-              options={planes} // [{value,label,...}]
+              options={planes}
               placeholder="Seleccionar plan..."
               disabledVisual={!alumno}
             />
@@ -263,9 +328,14 @@ export default function RegistrarPagoPage() {
               </p>
             )}
 
+            {cargandoPlanes && (
+              <p className="text-xs text-gray-500">Cargando planes...</p>
+            )}
+
             <InputField
               label="Monto pagado (ARS)"
               name="monto_pagado"
+              readOnly={true}
               register={register}
               error={errors.monto_pagado?.message}
               placeholder="Ej: 15000"
@@ -284,37 +354,32 @@ export default function RegistrarPagoPage() {
                 { value: "MERCADO PAGO", label: "Mercado Pago" },
               ]}
               disabledVisual={!alumno}
-              asNumber={false} // ✅ queda string sí o sí
+              asNumber={false}
             />
+
             <div className="flex flex-col gap-3 justify-center items-center">
-                <SubmitButton
-                  label={alumno ? "Registrar pago" : "Buscá un alumno primero"}
-                  loading={cargando}
-                  loadingLabel="Registrando..."
-                  disabled={!alumno}
-                  className="w-42"
-                />
-                <SubmitButton
-                  label={"Limpiar"}
-                  
-                  type="button"
-                  onClick={() => {
-                    limpiarMensajes();
-                    limpiarFormularioCompleto();
-                  }}
-                  
-                  className="w-42"
-                />
+              <SubmitButton
+                label={alumno ? "Registrar pago" : "Buscá un alumno primero"}
+                loading={cargando}
+                loadingLabel="Registrando..."
+                disabled={!alumno}
+                className="w-42"
+              />
 
-
+              <SubmitButton
+                label="Limpiar"
+                type="button"
+                onClick={() => {
+                  limpiarMensajes();
+                  limpiarFormularioCompleto();
+                }}
+                className="w-42"
+              />
             </div>
-
-            
           </form>
         </FormCard>
       </div>
 
-      {/* ✅ MODAL ÉXITO */}
       <PagoSuccessModal
         open={modalOpen}
         persona={{

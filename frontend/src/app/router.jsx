@@ -15,6 +15,8 @@ import HeatmapAsistenciasPage from "../pages/estadisticas/heatmap_asistencias.js
 import ListaAlumnosPage from "../pages/estadisticas/lista_alumnos.jsx";
 import DetalleAlumnoPage from "../pages/estadisticas/detalle_alumno.jsx";
 import RegistrarPagoPage from "../pages/registrar_pago.jsx";
+import PlanesPage from "../pages/admin/planes_page.jsx";
+import StaffPage from "../pages/admin/StaffPage.jsx";
 
 export const router = createBrowserRouter([
   {
@@ -127,6 +129,26 @@ export const router = createBrowserRouter([
     <AppLayout>
       <ProtectedRoute roles={["admin", "staff"]}>
         <RegistrarPagoPage />
+      </ProtectedRoute>
+    </AppLayout>
+  ),
+},
+{
+  path: "/admin/planesViews",
+  element: (
+    <AppLayout>
+      <ProtectedRoute roles={["admin"]}>
+        <PlanesPage />
+      </ProtectedRoute>
+    </AppLayout>
+  ),
+},
+{
+  path: "/admin/staffManager",
+  element: (
+    <AppLayout>
+      <ProtectedRoute roles={["admin"]}>
+        <StaffPage />
       </ProtectedRoute>
     </AppLayout>
   ),
