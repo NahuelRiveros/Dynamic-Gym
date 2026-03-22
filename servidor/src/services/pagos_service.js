@@ -1,5 +1,5 @@
 import { sequelize } from "../database/sequelize.js";
-import { QueryTypes, Op } from "sequelize";
+import { QueryTypes } from "sequelize";
 import {
   GymPersona,
   GymAlumno,
@@ -42,9 +42,9 @@ function sumarDiasISO(fechaISO, dias) {
  * - Actualiza alumno y lo habilita
  * - Log de cambio de estado si correspondía
  *
- * Lógica:
- * - Si hay plan vigente HOY: el nuevo plan arranca el día siguiente al fin vigente
- * - Si no: arranca HOY
+ * REGLA NUEVA:
+ * - El nuevo plan SIEMPRE arranca HOY
+ * - NO espera al vencimiento del plan vigente
  */
 export async function registrarPagoPorDni({
   documento,
@@ -161,29 +161,12 @@ export async function registrarPagoPorDni({
       };
     }
 
-    // 4) Plan vigente HOY (tomar el más nuevo vigente)
-    const planVigente = await GymFechaDisponible.findOne({
-      where: {
-        gym_fecha_rela_alumno: alumno.gym_alumno_id,
-        gym_fecha_inicio: { [Op.lte]: hoyISO },
-        gym_fecha_fin: { [Op.gte]: hoyISO },
-      },
-      order: [
-        ["gym_fecha_inicio", "DESC"],
-        ["gym_fecha_id", "DESC"],
-      ],
-      transaction: t,
-      lock: t.LOCK.UPDATE,
-    });
-
-    // 5) Fechas del nuevo plan
-    const inicio = planVigente
-      ? sumarDiasISO(String(planVigente.gym_fecha_fin).slice(0, 10), 1)
-      : hoyISO;
-
+    // 4) Fechas del nuevo plan
+    // REGLA NUEVA: siempre arranca hoy
+    const inicio = hoyISO;
     const fin = sumarDiasISO(inicio, diasTotales - 1);
 
-    // 6) Insertar pago / vigencia
+    // 5) Insertar pago / vigencia
     const [rowsFD] = await sequelize.query(
       `
       INSERT INTO gym_fecha_disponible (
@@ -237,7 +220,7 @@ export async function registrarPagoPorDni({
     const fechaCambio = filaFD?.gym_fecha_fechacambio ?? null;
     const usuarioCobroId = filaFD?.gym_fecha_rela_usuario_cobro ?? Number(usuario_id_cobro);
 
-    // 7) Actualizar alumno: plan actual + estado habilitado
+    // 6) Actualizar alumno: plan actual + estado habilitado
     const estadoAnterior = Number(alumno.gym_alumno_rela_estadoalumno);
 
     await alumno.update(
@@ -248,16 +231,7 @@ export async function registrarPagoPorDni({
       { transaction: t }
     );
 
-    // Debug opcional
-    console.log("[PAGO] estadoAnterior:", estadoAnterior);
-    console.log("[PAGO] estadoNuevo (obj):", alumno.gym_alumno_rela_estadoalumno);
-
-    const alumnoDB = await GymAlumno.findByPk(alumno.gym_alumno_id, {
-      transaction: t,
-    });
-    console.log("[PAGO] estadoNuevo (DB):", alumnoDB?.gym_alumno_rela_estadoalumno);
-
-    // 8) Log si cambió el estado
+    // 7) Log si cambió el estado
     if (estadoAnterior !== ESTADO_HABILITADO) {
       await sequelize.query(
         `
@@ -295,13 +269,11 @@ export async function registrarPagoPorDni({
       );
     }
 
-    // 9) Respuesta
+    // 8) Respuesta
     return {
       ok: true,
       codigo: "OK",
-      mensaje: planVigente
-        ? "Pago registrado. El plan se programó al finalizar el vigente."
-        : "Pago registrado y alumno habilitado",
+      mensaje: "Pago registrado y alumno habilitado",
       alumno: {
         alumno_id: alumno.gym_alumno_id,
         persona_id: persona.gym_persona_id,
@@ -327,10 +299,7 @@ export async function registrarPagoPorDni({
         ingresos_disponibles: ingresosTotales,
       },
       info: {
-        tenia_plan_vigente: Boolean(planVigente),
-        plan_vigente_fin: planVigente
-          ? String(planVigente.gym_fecha_fin).slice(0, 10)
-          : null,
+        inicia_desde_hoy: true,
       },
     };
   });

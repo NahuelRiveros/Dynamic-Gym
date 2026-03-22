@@ -1,7 +1,7 @@
 // src/pages/estadisticas/RecaudacionesPage.jsx
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { getRecaudacionMensual } from "../../api/estadisticas_api";
+import { getRecaudacionMensualPorAnio } from "../../api/recaudacion_api"; 
 import { BarChart3, Calendar, Dumbbell, RefreshCw, ArrowRight } from "lucide-react";
 
 export default function RecaudacionCalendario() {
@@ -17,7 +17,7 @@ export default function RecaudacionCalendario() {
     setCargando(true);
     setError(null);
     try {
-      const r = await getRecaudacionMensual(anio);
+      const r = await getRecaudacionMensualPorAnio(anio);
       if (!r?.ok) {
         setError(r?.mensaje || "No se pudo cargar recaudación");
         setData(null);

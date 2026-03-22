@@ -114,7 +114,7 @@ export default function KioskPage() {
       <div className="relative min-h-screen flex items-center justify-center p-4">
         
         {/* 🔔 ALERTAS */}
-        <div className="absolute top-4 right-4 z-50">
+        <div className="absolute top-4 right-4 z-10">
           <AlertasDropdown hoy={cumples.hoy} proximos={cumples.proximos} />
         </div>
 

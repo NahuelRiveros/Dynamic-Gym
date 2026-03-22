@@ -1,25 +1,6 @@
 import { http } from "./http";
 
 /**
- * GET /estadisticas/Recaudaciones?anio=2026
- */
-export async function getRecaudacionMensual(anio) {
-  const r = await http.get("/estadisticas/recaudaciones", {
-    params: anio ? { anio } : undefined,
-  });
-  
-  return r.data;
-  
-}
-
-export async function getRecaudacionDiaria(anio, mes) {
-  const r = await http.get("/estadisticas/recaudaciones_diaria", {
-    params: { anio, mes }, // mes: 1..12
-  });
-  return r.data;
-}
-
-/**
  * GET /estadisticas/alumnos_Nuevos?desde=YYYY-MM-DD&hasta=YYYY-MM-DD
  */
 export async function getAlumnosNuevos({ desde, hasta } = {}) {
@@ -78,5 +59,4 @@ export async function getHeatmapAsistencias({ desde, hasta } = {}) {
   });
   return r.data;
 }
-
 

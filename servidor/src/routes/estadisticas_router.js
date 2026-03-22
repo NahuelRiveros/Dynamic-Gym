@@ -1,21 +1,46 @@
 import { Router } from "express";
+
 import {
-  RecaudacionMensual,
   AlumnosNuevos,
   VencimientosProximos7Dias,
   Asistencias,
   AsistenciasHoras,
   AsistenciasHorasDia,
-  RecaudacionDiariaMes,
 } from "../controllers/estadisticas_controller.js";
-import { requireAuth , requireRole} from "../middleware/auth_middleware.js";
 
 export const estadisticasRouter = Router();
-estadisticasRouter.use(requireAuth,requireRole("admin"))
-estadisticasRouter.get("/recaudaciones", RecaudacionMensual);
-estadisticasRouter.get("/recaudaciones_diaria", RecaudacionDiariaMes);
+
+/**
+ * =========================
+ * ALUMNOS
+ * =========================
+ */
 estadisticasRouter.get("/alumnos_Nuevos", AlumnosNuevos);
+
+/**
+ * =========================
+ * VENCIMIENTOS
+ * =========================
+ */
 estadisticasRouter.get("/vencimientos", VencimientosProximos7Dias);
+
+/**
+ * =========================
+ * ASISTENCIAS
+ * =========================
+ */
 estadisticasRouter.get("/asistencias", Asistencias);
+
+/**
+ * =========================
+ * ASISTENCIAS POR HORA
+ * =========================
+ */
 estadisticasRouter.get("/asistencias_horas", AsistenciasHoras);
+
+/**
+ * =========================
+ * ASISTENCIAS HEATMAP
+ * =========================
+ */
 estadisticasRouter.get("/asistencias_horas_dia", AsistenciasHorasDia);

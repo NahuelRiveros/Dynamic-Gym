@@ -1,3 +1,4 @@
+//lista_alumnos.jsx
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getAlumnosListado , actualizarEstadosAlumnos} from "../../api/alumnos_api";

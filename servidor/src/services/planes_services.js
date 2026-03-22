@@ -18,6 +18,7 @@ export async function listarPlanes({ incluirInactivos = true } = {}) {
       "gym_cat_tipoplan_ingresos",
       "gym_cat_tipoplan_precio",
       "gym_cat_tipoplan_activo",
+      "gym_cat_tipoplan_fechacambio"
     ],
     order: [["gym_cat_tipoplan_descripcion", "ASC"]],
   });

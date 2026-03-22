@@ -12,6 +12,12 @@ import SelectField from "../components/form/select_field";
 import SubmitButton from "../components/form/submit_button";
 import { formatearFechaAR } from "../components/form/formatear_fecha.js";
 
+import {
+  normalizarDocumento,
+  calcularNuevoPlanDesdeHoy,
+  obtenerPrecioPlan,
+} from "../components/utils/pagos_utils.js";
+
 export default function RegistrarPagoPage() {
   const [planes, setPlanes] = useState([]);
   const [cargandoPlanes, setCargandoPlanes] = useState(false);
@@ -83,7 +89,8 @@ export default function RegistrarPagoPage() {
     setAlumno(null);
     setPlanVigente(null);
 
-    const doc = String(documento ?? "").replace(/[.\s]/g, "").trim();
+    const doc = normalizarDocumento(documento);
+
     if (!doc || !/^\d+$/.test(doc)) {
       setError("DNI inválido (solo números)");
       return;
@@ -92,12 +99,11 @@ export default function RegistrarPagoPage() {
     setCargando(true);
     try {
       const r = await previewPago(doc);
+
       if (!r?.ok) {
         setError(r?.mensaje || "No se pudo buscar el alumno");
         return;
       }
-
-      console.log(r);
 
       setAlumno(r.alumno);
       setPlanVigente(r.ultimo_pago || null);
@@ -118,40 +124,15 @@ export default function RegistrarPagoPage() {
 
   const diasSeleccionados = Number(planSeleccionado?.dias_totales ?? 0);
   const ingresosSeleccionados = Number(planSeleccionado?.ingresos ?? 0);
-
-  // preparado para futuro soporte de precio
-  const precioSeleccionado = Number(
-    planSeleccionado?.precio ??
-      planSeleccionado?.monto ??
-      planSeleccionado?.precio_plan ??
-      0
+  const precioSeleccionado = useMemo(
+    () => obtenerPrecioPlan(planSeleccionado),
+    [planSeleccionado]
   );
 
-  const nuevoVencimiento = useMemo(() => {
-    if (!planSeleccionado || !diasSeleccionados) return null;
+  const nuevoPlanInfo = useMemo(() => {
+    return calcularNuevoPlanDesdeHoy(diasSeleccionados);
+  }, [diasSeleccionados]);
 
-    const hoy = new Date();
-    hoy.setHours(0, 0, 0, 0);
-
-    let fechaBase = new Date(hoy);
-
-    // Si aún tiene plan vigente, extiende desde ahí
-    // if (planVigente?.fin) {
-    //   const finActual = new Date(planVigente.fin);
-    //   finActual.setHours(0, 0, 0, 0);
-
-    //   if (!Number.isNaN(finActual.getTime()) && finActual >= hoy) {
-    //     fechaBase = finActual;
-    //   }
-    // }
-
-    const fechaCalculada = new Date(fechaBase);
-    fechaCalculada.setDate(fechaCalculada.getDate() + diasSeleccionados);
-
-    return fechaCalculada;
-  }, [planSeleccionado, diasSeleccionados, planVigente]);
-
-  // futuro: si el plan trae precio, autocompleta monto
   useEffect(() => {
     if (!planSeleccionado) return;
 
@@ -162,34 +143,37 @@ export default function RegistrarPagoPage() {
 
   async function onSubmit(values) {
     limpiarMensajes();
-    console.log("metodo_pago raw:", values.metodo_pago, typeof values.metodo_pago);
 
     if (!alumno?.alumno_id) {
       setError("Primero buscá y confirmá el alumno por DNI.");
       return;
     }
 
-    const doc = String(values.documento ?? "").replace(/[.\s]/g, "").trim();
+    const doc = normalizarDocumento(values.documento);
     const monto = Number(values.monto_pagado);
 
     if (!doc || !/^\d+$/.test(doc)) {
       setError("DNI inválido (solo números)");
       return;
     }
+
     if (!values.tipo_plan_id) {
       setError("Seleccioná un plan");
       return;
     }
+
     if (!Number.isFinite(monto) || monto <= 0) {
       setError("Monto inválido");
       return;
     }
+
     if (!String(values.metodo_pago ?? "").trim()) {
       setError("Método de pago obligatorio");
       return;
     }
 
     setCargando(true);
+
     try {
       const r = await registrarPago({
         documento: doc,
@@ -224,6 +208,7 @@ export default function RegistrarPagoPage() {
         >
           <div className="space-y-3">
             <FormError message={error} />
+
             {okMsg ? (
               <div className="rounded-xl bg-blue-50 p-3 text-sm text-blue-700 text-center">
                 {okMsg}
@@ -231,7 +216,6 @@ export default function RegistrarPagoPage() {
             ) : null}
           </div>
 
-          {/* Búsqueda alumno */}
           <div className="mt-5 flex flex-col gap-3 justify-center items-center">
             <InputField
               label="DNI"
@@ -254,13 +238,14 @@ export default function RegistrarPagoPage() {
             />
           </div>
 
-          {/* Preview alumno */}
           {alumno && (
             <div className="mt-5 rounded-2xl border bg-white p-4">
               <div className="text-sm font-semibold text-gray-700">Alumno</div>
+
               <div className="mt-1 text-lg font-extrabold">
                 {alumno.apellido} {alumno.nombre}
               </div>
+
               <div className="mt-1 text-sm text-gray-600">
                 DNI: {alumno.documento} · Estado:{" "}
                 <b>{alumno.estado_desc || alumno.estado_id}</b>
@@ -269,12 +254,15 @@ export default function RegistrarPagoPage() {
               <div className="mt-3 text-sm space-y-3">
                 <div className="rounded-xl border p-3">
                   <div>
-                    <b>Plan vigente:</b> {planVigente?.tipo_desc || "Sin plan vigente"}
+                    <b>Plan vigente:</b>{" "}
+                    {planVigente?.tipo_desc || "Sin plan vigente"}
                   </div>
+
                   <div>
                     <b>Vence actual:</b>{" "}
                     {planVigente?.fin ? formatearFechaAR(planVigente.fin) : "—"}
                   </div>
+
                   <div>
                     <b>Ingresos actuales:</b>{" "}
                     {planVigente?.ingresos_disponibles ?? "—"}
@@ -286,16 +274,29 @@ export default function RegistrarPagoPage() {
                     <div>
                       <b>Nuevo plan:</b> {planSeleccionado.label}
                     </div>
+
                     <div>
                       <b>Días del plan:</b> {diasSeleccionados || "—"}
                     </div>
+
                     <div>
                       <b>Ingresos del plan:</b> {ingresosSeleccionados || "—"}
                     </div>
+
+                    <div>
+                      <b>Inicio estimado del nuevo plan:</b>{" "}
+                      {nuevoPlanInfo.inicioEstimado
+                        ? formatearFechaAR(nuevoPlanInfo.inicioEstimado)
+                        : "—"}
+                    </div>
+
                     <div>
                       <b>Nuevo vencimiento estimado:</b>{" "}
-                      {nuevoVencimiento ? formatearFechaAR(nuevoVencimiento) : "—"}
+                      {nuevoPlanInfo.vencimientoEstimado
+                        ? formatearFechaAR(nuevoPlanInfo.vencimientoEstimado)
+                        : "—"}
                     </div>
+
                     {precioSeleccionado > 0 && (
                       <div>
                         <b>Precio sugerido:</b> ${precioSeleccionado}
@@ -307,7 +308,6 @@ export default function RegistrarPagoPage() {
             </div>
           )}
 
-          {/* Form pago */}
           <form
             onSubmit={handleSubmit(onSubmit)}
             className="mt-5 flex flex-col grid-cols-1 gap-3"

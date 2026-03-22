@@ -1,11 +1,9 @@
 import {
-  obtenerRecaudacionMensual,
   obtenerAlumnosNuevos,
-  obtenerVencimientosProximos,
+  obtenerVencimientos,
   obtenerAsistencias,
-  obtenerAsistenciasPorHora,
+  obtenerAsistenciasHoras,
   obtenerAsistenciasHoraDiaSemana,
-  obtenerRecaudacionDiariaMes,
 } from "../services/estadisticas_service.js";
 
 /**
@@ -29,35 +27,7 @@ function rangoMesActualISO() {
 
 /**
  * =========================
- * 1) RECAUDACIÓN MENSUAL
- * GET /estadisticas/Recaudaciones?anio=2026
- * =========================
- */
-export async function RecaudacionMensual(req, res) {
-  try {
-    const anio = parseIntSafe(req.query.anio, new Date().getFullYear());
-    const data = await obtenerRecaudacionMensual({ anio });
-
-    return res.json({
-      ok: true,
-      anio,
-      ...data, // { items }
-    });
-  } catch (error) {
-    console.error("RecaudacionMensual:", error);
-    return res.status(500).json({
-      ok: false,
-      codigo: "ERROR_RECAUDACION_MENSUAL",
-      mensaje: "No se pudo obtener la recaudación mensual",
-    });
-  }
-}
-
-
-
-/**
- * =========================
- * 2) ALUMNOS NUEVOS
+ * 1) ALUMNOS NUEVOS
  * GET /estadisticas/alumnos_Nuevos?desde=YYYY-MM-DD&hasta=YYYY-MM-DD
  * Si no manda fechas, usa mes actual.
  * =========================
@@ -75,7 +45,7 @@ export async function AlumnosNuevos(req, res) {
       ok: true,
       desde,
       hasta,
-      ...data, // { total }
+      ...data,
     });
   } catch (error) {
     console.error("AlumnosNuevos:", error);
@@ -89,19 +59,19 @@ export async function AlumnosNuevos(req, res) {
 
 /**
  * =========================
- * 3) VENCIMIENTOS PRÓXIMOS
+ * 2) VENCIMIENTOS PRÓXIMOS
  * GET /estadisticas/vencimientos?dias=7
  * =========================
  */
 export async function VencimientosProximos7Dias(req, res) {
   try {
     const dias = parseIntSafe(req.query.dias, 7);
-    const data = await obtenerVencimientosProximos({ dias });
+    const data = await obtenerVencimientos({ dias });
 
     return res.json({
       ok: true,
       dias,
-      ...data, // { total, items }
+      ...data,
     });
   } catch (error) {
     console.error("VencimientosProximos7Dias:", error);
@@ -115,7 +85,7 @@ export async function VencimientosProximos7Dias(req, res) {
 
 /**
  * =========================
- * 4) ASISTENCIAS (Resumen)
+ * 3) ASISTENCIAS (Resumen)
  * GET /estadisticas/asistencias?desde=YYYY-MM-DD&hasta=YYYY-MM-DD
  * Si no manda fechas, usa mes actual.
  * =========================
@@ -133,7 +103,7 @@ export async function Asistencias(req, res) {
       ok: true,
       desde,
       hasta,
-      ...data, // { total_ingresos, ingresos_por_dia, top_alumnos }
+      ...data,
     });
   } catch (error) {
     console.error("Asistencias:", error);
@@ -147,7 +117,7 @@ export async function Asistencias(req, res) {
 
 /**
  * =========================
- * 5) ASISTENCIAS POR HORA (Hora pico)
+ * 4) ASISTENCIAS POR HORA
  * GET /estadisticas/asistencias_horas?desde=YYYY-MM-DD&hasta=YYYY-MM-DD
  * Si no manda fechas, usa mes actual.
  * =========================
@@ -159,13 +129,13 @@ export async function AsistenciasHoras(req, res) {
     const desde = req.query.desde ?? defDesde;
     const hasta = req.query.hasta ?? defHasta;
 
-    const data = await obtenerAsistenciasPorHora({ desde, hasta });
+    const data = await obtenerAsistenciasHoras({ desde, hasta });
 
     return res.json({
       ok: true,
       desde,
       hasta,
-      ...data, // { items, hora_pico, cantidad_pico }
+      ...data,
     });
   } catch (error) {
     console.error("AsistenciasHoras:", error);
@@ -179,13 +149,8 @@ export async function AsistenciasHoras(req, res) {
 
 /**
  * =========================
- * 6) ASISTENCIAS POR HORA Y DÍA (Heatmap)
+ * 5) ASISTENCIAS POR HORA Y DÍA (Heatmap)
  * GET /estadisticas/asistencias_horas_dia?desde=YYYY-MM-DD&hasta=YYYY-MM-DD
- * Si no manda fechas, usa mes actual.
- *
- * Devuelve:
- * items: [{ dow, hora, cantidad }]
- * pico: { dow, hora, cantidad }
  * =========================
  */
 export async function AsistenciasHorasDia(req, res) {
@@ -201,7 +166,7 @@ export async function AsistenciasHorasDia(req, res) {
       ok: true,
       desde,
       hasta,
-      ...data, // { items, pico }
+      ...data,
       dias: ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"],
     });
   } catch (error) {
@@ -210,46 +175,6 @@ export async function AsistenciasHorasDia(req, res) {
       ok: false,
       codigo: "ERROR_ASISTENCIAS_HORAS_DIA",
       mensaje: "No se pudo obtener asistencias por hora y día",
-    });
-  }
-}
-
-
-/**
- * =========================
- * 5) Recaudacion diaria de un mes
- * GET /estadisticas/recaudaciones_diaria?anio=2022%mes=1
- * =========================
- */
-
-
-export async function RecaudacionDiariaMes(req, res) {
-  try {
-    const anio = Number(req.query.anio);
-    const mes = Number(req.query.mes); // 1..12
-
-    if (!anio || !mes || mes < 1 || mes > 12) {
-      return res.status(400).json({
-        ok: false,
-        codigo: "VALIDACION",
-        mensaje: "anio y mes son obligatorios (mes 1..12)",
-      });
-    }
-
-    const data = await obtenerRecaudacionDiariaMes({ anio, mes });
-
-    return res.json({
-      ok: true,
-      anio,
-      mes,
-      ...data, // { items: [{dia,total}] }
-    });
-  } catch (e) {
-    console.error("RecaudacionDiariaMes:", e);
-    return res.status(500).json({
-      ok: false,
-      codigo: "ERROR_RECAUDACION_DIARIA",
-      mensaje: "No se pudo obtener la recaudación diaria",
     });
   }
 }

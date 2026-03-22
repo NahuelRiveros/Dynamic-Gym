@@ -8,7 +8,7 @@ import KioskPage from "../pages/kiosk_page.jsx";
 import LoginPage from "../pages/login_page.jsx";
 import RegisterAlumnoPage from "../pages/register_page.jsx";
 import RecaudacionCalendario from "../pages/estadisticas/recaudaciones_mensual_page.jsx";
-import RecaudacionCalendarioDia from "../pages/estadisticas/recaudacion_mes_page.jsx";
+import RecaudacionCalendarioDia from "../pages/estadisticas/recaudaciones_dias_page.jsx";
 import AlumnosNuevosPage from "../pages/estadisticas/alumnos_nuevos.jsx";
 import VencimientosPage from "../pages/estadisticas/vencimientos_proximos.jsx";
 import HeatmapAsistenciasPage from "../pages/estadisticas/heatmap_asistencias.jsx"
@@ -17,6 +17,7 @@ import DetalleAlumnoPage from "../pages/estadisticas/detalle_alumno.jsx";
 import RegistrarPagoPage from "../pages/registrar_pago.jsx";
 import PlanesPage from "../pages/admin/planes_page.jsx";
 import StaffPage from "../pages/admin/StaffPage.jsx";
+import RecaudacionesDetallePage from "../pages/estadisticas/recaudaciones_detalle.jsx";
 
 export const router = createBrowserRouter([
   {
@@ -149,6 +150,16 @@ export const router = createBrowserRouter([
     <AppLayout>
       <ProtectedRoute roles={["admin"]}>
         <StaffPage />
+      </ProtectedRoute>
+    </AppLayout>
+  ),
+},
+{
+  path: "/estadisticas/recaudaciones/:anio/:mes/:dia/detalle",
+  element: (
+    <AppLayout>
+      <ProtectedRoute roles={["admin"]}>
+        <RecaudacionesDetallePage />
       </ProtectedRoute>
     </AppLayout>
   ),

@@ -44,6 +44,7 @@ export default function PlanesPage() {
       setCargando(true);
       setError("");
       const resp = await obtenerPlanes();
+      console.log(resp)
       setPlanes(resp.data || []);
     } catch (err) {
       console.error(err);

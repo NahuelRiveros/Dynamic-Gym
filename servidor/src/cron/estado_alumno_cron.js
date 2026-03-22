@@ -2,8 +2,8 @@ import cron from "node-cron";
 import { actualizarEstadosAlumnosAutomatico } from "../services/estado_alumno_auto_service.js";
 
 export function iniciarCronEstadoAlumnos() {
-  // Todos los días a las 03:00 AM
-  cron.schedule("0 3 * * *", async () => {
+  // Cada 1 hora
+  cron.schedule("0 * * * *", async () => {
     try {
       console.log("⏰ Ejecutando actualización automática de estados...");
 
@@ -12,13 +12,11 @@ export function iniciarCronEstadoAlumnos() {
         modificado_por: "SYSTEM",
       });
 
-      console.log(
-        `✔ Estados actualizados. Cambios: ${r.total_cambios}`
-      );
+      console.log(`✔ Estados actualizados. Cambios: ${r.total_cambios}`);
     } catch (err) {
       console.error("❌ Error en cron estado alumnos:", err);
     }
   });
 
-  console.log("🟢 Cron de estados de alumnos iniciado (03:00 AM)");
+  console.log("🟢 Cron de estados de alumnos iniciado (cada 1 hora)");
 }
