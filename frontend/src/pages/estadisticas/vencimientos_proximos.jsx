@@ -121,7 +121,7 @@ export default function VencimientosPage() {
                   <th className="py-2 pr-3">Plan</th>
                   <th className="py-2 pr-3">Inicio</th>
                   <th className="py-2 pr-3">Fin</th>
-                  <th className="py-2 pr-3">Quedan</th>
+                  <th className="py-2 pr-3">Ingresos</th>
                   <th className="py-2 pr-3">Días</th>
                 </tr>
               </thead>
@@ -141,7 +141,7 @@ export default function VencimientosPage() {
                 ) : (
                   items.map((it, idx) => {
                     const diasRest = diasEntre(hoyISO, it.fin);
-                    const urgente = diasRest != null && diasRest <= 2;
+                    const urgente = diasRest != null && diasRest <= 4;
 
                     return (
                       <tr key={`${it.alumno_id}-${it.fecha_id}-${idx}`} className="border-t">

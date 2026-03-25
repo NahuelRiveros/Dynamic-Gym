@@ -1,4 +1,3 @@
-// src/services/ingresos_service.js
 import { QueryTypes, Op } from "sequelize";
 import { sequelize } from "../database/sequelize.js";
 import {
@@ -8,27 +7,35 @@ import {
   GymCatTipoPlan,
 } from "../models/index.js";
 
-const TZ_BA = "America/Argentina/Buenos_Aires";
-
 const ESTADO_HABILITADO = 1;
 const ESTADO_RESTRINGIDO = 2;
 
 const normalizarDocumento = (doc) =>
   String(doc ?? "").replace(/[.\s]/g, "").trim();
 
-function hoyArgentinaISO() {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: TZ_BA,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date());
+function obtenerFechaHoraSistema() {
+  const ahora = new Date();
+
+  const anio = ahora.getFullYear();
+  const mes = String(ahora.getMonth() + 1).padStart(2, "0");
+  const dia = String(ahora.getDate()).padStart(2, "0");
+
+  const horas = String(ahora.getHours()).padStart(2, "0");
+  const minutos = String(ahora.getMinutes()).padStart(2, "0");
+  const segundos = String(ahora.getSeconds()).padStart(2, "0");
+
+  return {
+    fecha: `${anio}-${mes}-${dia}`,
+    hora: `${horas}:${minutos}:${segundos}`,
+    fechaHora: `${anio}-${mes}-${dia} ${horas}:${minutos}:${segundos}`,
+  };
 }
 
 export async function registrarIngresoPorDni({ dni }) {
   const dniNormalizado = normalizarDocumento(dni);
   const dniNum = Number(dniNormalizado);
-  const hoy = hoyArgentinaISO();
+
+  const { fecha: hoy, hora, fechaHora } = obtenerFechaHoraSistema();
 
   if (!Number.isFinite(dniNum) || dniNum <= 0) {
     return { ok: false, codigo: "VALIDACION", mensaje: "Documento inválido" };
@@ -62,7 +69,6 @@ export async function registrarIngresoPorDni({ dni }) {
       };
     }
 
-    // Buscar último plan vigente, igual que en Python
     const planReciente = await GymFechaDisponible.findOne({
       where: {
         gym_fecha_rela_alumno: alumno.gym_alumno_id,
@@ -149,37 +155,41 @@ export async function registrarIngresoPorDni({ dni }) {
       )
       VALUES (
         :fecha_id,
-        CURRENT_DATE,
-        (now() AT TIME ZONE '${TZ_BA}'),
-        (now() AT TIME ZONE '${TZ_BA}')
+        :fecha,
+        :hora,
+        :fechaHora
       )
       RETURNING
         gym_dia_id,
         gym_dia_fechaingreso,
-        gym_dia_horaingreso,
-        gym_dia_fechacambio
+        gym_dia_horaingreso
       `,
       {
-        replacements: { fecha_id: planReciente.gym_fecha_id },
+        replacements: {
+          fecha_id: planReciente.gym_fecha_id,
+          fecha: hoy,
+          hora,
+          fechaHora,
+        },
         type: QueryTypes.INSERT,
         transaction: t,
       }
     );
 
     const ingresoDB = Array.isArray(rows) ? rows[0] : rows;
-
     const ingresosRestantes = ingresosActuales - 1;
 
     await sequelize.query(
       `
       UPDATE gym_fecha_disponible
       SET gym_fecha_ingresosdisponibles = :restantes,
-          gym_fecha_fechacambio = (now() AT TIME ZONE '${TZ_BA}')
+          gym_fecha_fechacambio = :fechaHora
       WHERE gym_fecha_id = :fecha_id
       `,
       {
         replacements: {
           restantes: ingresosRestantes,
+          fechaHora,
           fecha_id: planReciente.gym_fecha_id,
         },
         type: QueryTypes.UPDATE,
@@ -236,7 +246,8 @@ export async function registrarIngresoPorDni({ dni }) {
         tipo_plan: tipoPlanDesc,
         ingresos_restantes: ingresosRestantes,
       },
-      fecha_ingreso: ingresoDB?.gym_dia_horaingreso ?? null,
+      fecha_ingreso: ingresoDB?.gym_dia_fechaingreso ?? hoy,
+      hora_ingreso: ingresoDB?.gym_dia_horaingreso ?? hora,
     };
   });
 }

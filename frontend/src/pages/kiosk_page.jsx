@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { kioskIngreso } from "../api/kiosk_api.js";
 import { getAlumnosCumples } from "../api/alumnos_api.js";
-
 import KioskResultModal from "../components/modal/kiosk_result_modal.jsx";
 import KioskErrorModal from "../components/modal/kiosk_error_modal.jsx";
 import SubmitButton from "../components/form/submit_button.jsx";

@@ -24,11 +24,16 @@ export default function KioskResultModal({ resp, onClose }) {
             <IdCard className={iconClass} /> DNI:  <b>{alumno.documento}</b>
             
           </div>
-          {resp.fecha_ingreso && (
-            <div>
-              <Clock9 className={iconClass}/> Ingreso: <b>{new Date(resp.fecha_ingreso).toLocaleString()}</b>
-            </div>
-          )}
+          {(resp.fecha_ingreso || resp.hora_ingreso) && (
+              <div>
+                <Clock9 className={iconClass} /> Ingreso:{" "}
+                <b>
+                  {resp.fecha_ingreso ? formatearFechaAR(resp.fecha_ingreso) : ""}
+                  {resp.fecha_ingreso && resp.hora_ingreso ? " - " : ""}
+                  {resp.hora_ingreso ? String(resp.hora_ingreso).slice(0, 5) : ""}
+                </b>
+              </div>
+            )}
         </div>
 
         {plan && (
