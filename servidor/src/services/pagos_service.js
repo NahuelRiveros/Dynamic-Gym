@@ -38,7 +38,7 @@ function sumarDiasISO(fechaISO, dias) {
 
 /**
  * Registrar pago por DNI.
- * - Inserta en gym_fecha_disponible
+ * - Inserta en gym_plan_alumno
  * - Actualiza alumno y lo habilita
  * - Log de cambio de estado si correspondía
  *
@@ -169,7 +169,7 @@ export async function registrarPagoPorDni({
     // 5) Insertar pago / vigencia
     const [rowsFD] = await sequelize.query(
       `
-      INSERT INTO gym_fecha_disponible (
+      INSERT INTO gym_plan_alumno (
         gym_fecha_rela_alumno,
         gym_fecha_montopagado,
         gym_fecha_inicio,
@@ -358,7 +358,7 @@ export async function previewPagoPorDni({ documento }) {
         f.gym_fecha_montopagado,
         f.gym_fecha_metodopago,
         f.gym_fecha_fechacambio
-      FROM gym_fecha_disponible f
+      FROM gym_plan_alumno f
       WHERE f.gym_fecha_rela_alumno = a.gym_alumno_id
       ORDER BY f.gym_fecha_id DESC
       LIMIT 1

@@ -108,7 +108,7 @@ export async function actualizarEstadosAlumnosAutomatico({
           f.gym_fecha_inicio,
           f.gym_fecha_fin,
           f.gym_fecha_ingresosdisponibles
-        FROM gym_fecha_disponible f
+        FROM gym_plan_alumno f
         WHERE f.gym_fecha_rela_alumno = a.gym_alumno_id
         ORDER BY f.gym_fecha_id DESC
         LIMIT 1

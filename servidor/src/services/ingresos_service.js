@@ -181,7 +181,7 @@ export async function registrarIngresoPorDni({ dni }) {
 
     await sequelize.query(
       `
-      UPDATE gym_fecha_disponible
+      UPDATE gym_plan_alumno
       SET gym_fecha_ingresosdisponibles = :restantes,
           gym_fecha_fechacambio = :fechaHora
       WHERE gym_fecha_id = :fecha_id
