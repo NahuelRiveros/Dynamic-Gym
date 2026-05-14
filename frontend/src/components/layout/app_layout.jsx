@@ -1,17 +1,21 @@
+import { useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import Navbar from "./navbar.jsx";
 import Footer from "./footer.jsx";
-import { useAuth } from "../../auth/auth_context.jsx";
-import ServerStatusBanner from "../server_status_banner.jsx";
-import GymAudioScheduler from "../gym_audio_scheduler.jsx";
+
+function ScrollToTop() {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [pathname]);
+  return null;
+}
 
 export default function AppLayout({ children }) {
-  const { usuario, logout } = useAuth();
-
   return (
     <div className="min-h-screen bg-gray-50">
-      <ServerStatusBanner />
-      <GymAudioScheduler />
-      <Navbar usuario={usuario} onLogout={logout} />
+      <ScrollToTop />
+      <Navbar />
       <main>{children}</main>
       <Footer />
     </div>
