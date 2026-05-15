@@ -34,7 +34,7 @@ export async function obtenerRecaudacionMesesPorAnio({ anio }) {
     SELECT
       EXTRACT(MONTH FROM f.gym_fecha_inicio)::int AS mes,
       COALESCE(SUM(f.gym_fecha_montopagado::numeric), 0) AS total
-    FROM gym_plan_alumno f
+    FROM gym_fecha_disponible f
     WHERE EXTRACT(YEAR FROM f.gym_fecha_inicio) = :anio
       AND COALESCE(f.gym_fecha_montopagado, 0) > 0
     GROUP BY 1
@@ -76,7 +76,7 @@ export async function obtenerRecaudacionDiasDeMes({ anio, mes }) {
     SELECT
       f.gym_fecha_inicio AS dia,
       COALESCE(SUM(f.gym_fecha_montopagado::numeric), 0) AS total
-    FROM gym_plan_alumno f
+    FROM gym_fecha_disponible f
     WHERE f.gym_fecha_inicio >= :desde::date
       AND f.gym_fecha_inicio < :hasta::date
       AND COALESCE(f.gym_fecha_montopagado, 0) > 0
@@ -123,7 +123,7 @@ export async function obtenerDetalleRecaudacionDia({ anio, mes, dia }) {
 
       p_usuario.gym_persona_nombre AS usuario_nombre,
       p_usuario.gym_persona_apellido AS usuario_apellido
-    FROM gym_plan_alumno f
+    FROM gym_fecha_disponible f
     LEFT JOIN gym_alumno a
       ON a.gym_alumno_id = f.gym_fecha_rela_alumno
     LEFT JOIN gym_persona p_alumno

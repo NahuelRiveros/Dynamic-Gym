@@ -20,7 +20,7 @@ export async function obtenerRecaudacionMensual({ anio }) {
     SELECT
       EXTRACT(MONTH FROM gym_fecha_inicio)::int AS mes,
       COALESCE(SUM(gym_fecha_montopagado::numeric), 0) AS total
-    FROM gym_plan_alumno
+    FROM gym_fecha_disponible
     WHERE EXTRACT(YEAR FROM gym_fecha_inicio) = :anio
       AND COALESCE(gym_fecha_montopagado, 0) > 0
     GROUP BY 1
@@ -60,7 +60,7 @@ export async function obtenerRecaudacionDiariaMes({ anio, mes }) {
     SELECT
       gym_fecha_inicio AS dia,
       COALESCE(SUM(gym_fecha_montopagado::numeric), 0) AS total
-    FROM gym_plan_alumno
+    FROM gym_fecha_disponible
     WHERE gym_fecha_inicio >= :desde::date
       AND gym_fecha_inicio < :hasta::date
       AND COALESCE(gym_fecha_montopagado, 0) > 0
@@ -110,7 +110,7 @@ export async function obtenerRecaudacionDetalleDia({ anio, mes, dia }) {
 
       p_usuario.gym_persona_nombre AS usuario_nombre,
       p_usuario.gym_persona_apellido AS usuario_apellido
-    FROM gym_plan_alumno f
+    FROM gym_fecha_disponible f
     LEFT JOIN gym_alumno a
       ON a.gym_alumno_id = f.gym_fecha_rela_alumno
     LEFT JOIN gym_persona p_alumno
@@ -203,7 +203,7 @@ export async function obtenerVencimientos({ dias = 7 } = {}) {
       f.gym_fecha_inicio AS inicio,
       f.gym_fecha_fin AS fin,
       f.gym_fecha_ingresosdisponibles AS ingresos_disponibles
-    FROM gym_plan_alumno f
+    FROM gym_fecha_disponible f
     INNER JOIN gym_alumno a
       ON a.gym_alumno_id = f.gym_fecha_rela_alumno
     INNER JOIN gym_persona p
@@ -237,11 +237,11 @@ export async function obtenerAsistencias({ desde, hasta } = {}) {
 
   const sql = `
     SELECT
-      DATE(di.gym_diaingreso_fechaingreso AT TIME ZONE '${TZ_AR}') AS dia,
+      di.gym_dia_fechaingreso AS dia,
       COUNT(*)::int AS total
     FROM gym_dia_ingreso di
-    WHERE di.gym_diaingreso_fechaingreso >= :desde
-      AND di.gym_diaingreso_fechaingreso < :hasta
+    WHERE di.gym_dia_fechaingreso >= :desde::date
+      AND di.gym_dia_fechaingreso < :hasta::date
     GROUP BY 1
     ORDER BY 1 ASC;
   `;
@@ -271,11 +271,11 @@ export async function obtenerAsistenciasHoras({ desde, hasta } = {}) {
 
   const sql = `
     SELECT
-      EXTRACT(HOUR FROM (di.gym_diaingreso_fechaingreso AT TIME ZONE '${TZ_AR}'))::int AS hora,
+      EXTRACT(HOUR FROM di.gym_dia_horaingreso)::int AS hora,
       COUNT(*)::int AS total
     FROM gym_dia_ingreso di
-    WHERE di.gym_diaingreso_fechaingreso >= :desde
-      AND di.gym_diaingreso_fechaingreso < :hasta
+    WHERE di.gym_dia_fechaingreso >= :desde::date
+      AND di.gym_dia_fechaingreso < :hasta::date
     GROUP BY 1
     ORDER BY 1 ASC;
   `;

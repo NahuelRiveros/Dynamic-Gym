@@ -2,7 +2,7 @@ import { DataTypes } from "sequelize";
 import { sequelize } from "../database/sequelize.js";
 
 export const GymFechaDisponible = sequelize.define(
-  "gym_plan_alumno",
+  "gym_fecha_disponible",
   {
     gym_fecha_id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
     gym_fecha_rela_alumno: { type: DataTypes.INTEGER, allowNull: false },
@@ -17,7 +17,7 @@ export const GymFechaDisponible = sequelize.define(
     gym_fecha_rela_usuario_cobro: { type: DataTypes.INTEGER, allowNull: true },
   },
   {
-    tableName: "gym_plan_alumno",
+    tableName: "gym_fecha_disponible",
     timestamps: false,
   }
 );

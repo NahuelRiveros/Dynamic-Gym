@@ -30,6 +30,14 @@ export const router = createBrowserRouter([
     ),
   },
   {
+    path: "*",
+    element: (
+      <AppLayout>
+        <HomePage />
+      </AppLayout>
+    ),
+  },
+  {
     path: "/kiosk",
     element: (
       <AppLayout>
