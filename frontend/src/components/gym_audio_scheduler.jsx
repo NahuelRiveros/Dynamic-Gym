@@ -5,7 +5,7 @@ import ordenGymSrc from "../sounds/OrdenGym.m4a";
 const HORA_APERTURA = 9;
 const HORA_CIERRE = 22;
 const CHECK_MS = 10000;
-const INTERVALO_ORDEN_MIN = 45;    // revisar cada 15 segundos
+const INTERVALO_ORDEN_MIN = 25;    // revisar cada 10 segundos
 
 function pad(n) {
   return String(n).padStart(2, "0");

@@ -2,8 +2,8 @@ import cron from "node-cron";
 import { actualizarEstadosAlumnosAutomatico } from "../services/estado_alumno_auto_service.js";
 
 export function iniciarCronEstadoAlumnos() {
-  // Cada 1 hora
-  cron.schedule("0 * * * *", async () => {
+  // Cada 10 minutos
+  cron.schedule("*/10 * * * *", async () => {
     try {
       console.log("⏰ Ejecutando actualización automática de estados...");
 

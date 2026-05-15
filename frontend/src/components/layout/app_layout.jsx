@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import Navbar from "./navbar.jsx";
 import Footer from "./footer.jsx";
+import GymAudioScheduler from "../gym_audio_scheduler.jsx";
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -16,6 +17,7 @@ export default function AppLayout({ children }) {
     <div className="min-h-screen bg-gray-50">
       <ScrollToTop />
       <Navbar />
+      <GymAudioScheduler />
       <main>{children}</main>
       <Footer />
     </div>
