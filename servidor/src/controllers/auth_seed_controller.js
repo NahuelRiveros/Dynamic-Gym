@@ -65,8 +65,8 @@ async function crearUsuarioConRol({ email, password, nombre, apellido, documento
       transaction: t,
     });
 
-    const hash = await bcrypt.hash(pass, 10);
     if (!usuario) {
+      const hash = await bcrypt.hash(pass, 10);
       usuario = await GymUsuario.create(
         {
           gym_usuario_rela_persona: persona.gym_persona_id,
@@ -74,12 +74,6 @@ async function crearUsuarioConRol({ email, password, nombre, apellido, documento
           gym_usuario_activo: true,
           gym_usuario_fechacambio: new Date(),
         },
-        { transaction: t }
-      );
-    } else {
-      // Actualiza el hash si el usuario ya existía (permite resetear contraseña)
-      await usuario.update(
-        { gym_usuario_contrasena: hash, gym_usuario_activo: true, gym_usuario_fechacambio: new Date() },
         { transaction: t }
       );
     }

@@ -8,7 +8,6 @@ export async function ActualizarEstadosAutomatico(req, res) {
   try {
     // si querés, del req.user sacás email del admin:
     const modificado_por = req.user?.email || "SYSTEM";
-    console.log(modificado_por)
     const r = await actualizarEstadosAlumnosAutomatico({
       fuente: "ADMIN_PANEL",
       modificado_por,

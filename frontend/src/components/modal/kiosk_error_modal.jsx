@@ -1,80 +1,129 @@
-export default function KioskErrorModal({ resp, onClose }) {
+import { useEffect, useState } from "react";
+import { XCircle, RefreshCw } from "lucide-react";
+
+const MENSAJES = {
+  NO_EXISTE: {
+    titulo: "DNI no registrado",
+    desc: "Este documento no existe en el sistema. Consultá en recepción para registrarte.",
+  },
+  NO_ES_ALUMNO: {
+    titulo: "No sos alumno",
+    desc: "La persona existe pero no está registrada como alumno del gym.",
+  },
+  PLAN_VENCIDO_O_INEXISTENTE: {
+    titulo: "Plan vencido",
+    desc: "No tenés un plan activo. Dirigite a recepción para renovar tu membresía.",
+  },
+  SIN_INGRESOS: {
+    titulo: "Sin ingresos disponibles",
+    desc: "Agotaste los ingresos de tu plan actual. Renovalo en recepción para seguir entrenando.",
+  },
+  RESTRINGIDO: {
+    titulo: "Acceso restringido",
+    desc: "Tu acceso está restringido. Consultá en recepción.",
+  },
+  VALIDACION: {
+    titulo: "DNI inválido",
+    desc: "Ingresá un número de DNI válido (sin puntos ni espacios).",
+  },
+  YA_INGRESO_HOY: {
+    titulo: "Ya ingresaste hoy",
+    desc: "Tu ingreso ya fue registrado para el día de hoy.",
+  },
+};
+
+export default function KioskErrorModal({ resp, onClose, autoCloseMs = 6000 }) {
   if (!resp) return null;
 
   const codigo = resp.codigo || "ERROR";
-  const alumno = resp.alumno || null;
-  const plan = resp.plan || null;
+  const totalSeg = Math.round(autoCloseMs / 1000);
+  const [restante, setRestante] = useState(totalSeg);
 
-  // Texto “amigable” según código
-  const tituloPorCodigo = {
-    NO_EXISTE: "⛔ DNI no registrado",
-    NO_ES_ALUMNO: "⛔ No es alumno",
-    VENCIDO: "⛔ Plan vencido",
-    SIN_INGRESOS: "⛔ Sin ingresos disponibles",
-    RESTRINGIDO: "⛔ Alumno restringido",
-    YA_INGRESO_HOY: "⚠️ Ya ingresó hoy",
-    VALIDACION: "⚠️ DNI inválido",
+  useEffect(() => {
+    let seg = totalSeg;
+    const t = setInterval(() => {
+      seg -= 1;
+      if (seg <= 0) {
+        clearInterval(t);
+        onClose();
+      } else {
+        setRestante(seg);
+      }
+    }, 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  const porcentaje = (restante / totalSeg) * 100;
+  const { titulo, desc } = MENSAJES[codigo] ?? {
+    titulo: "Acceso denegado",
+    desc: resp.mensaje || "No se pudo registrar el ingreso.",
   };
 
-  const titulo = tituloPorCodigo[codigo] || "⛔ Ingreso denegado";
-  const mensaje = resp.mensaje || resp.motivo || "No se pudo registrar el ingreso";
-
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 border border-red-200">
-        <div className="text-center">
-          <div className="text-3xl font-bold text-red-600">{titulo}</div>
-          <p className="text-gray-600 mt-2">{mensaje}</p>
+    <div className="fixed inset-0 z-50 bg-[#060a12]/96 flex flex-col">
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;900&display=swap');
+        .em-d { font-family: 'Barlow Condensed', sans-serif; }
 
-          <div className="mt-3 inline-flex px-3 py-1 rounded-full bg-red-50 text-red-700 text-sm font-semibold">
-            Código: {codigo}
-          </div>
+        @keyframes em-shake {
+          0%,100% { transform: translateX(0);  }
+          20%      { transform: translateX(-8px); }
+          40%      { transform: translateX(8px);  }
+          60%      { transform: translateX(-5px); }
+          80%      { transform: translateX(5px);  }
+        }
+        @keyframes em-up {
+          from { opacity: 0; transform: translateY(18px); }
+          to   { opacity: 1; transform: translateY(0);    }
+        }
+        .em-icon    { animation: em-shake .55s .1s ease both; }
+        .em-content { animation: em-up    .5s .2s ease both;  }
+      `}</style>
+
+      {/* Barra superior roja */}
+      <div className="h-1.5 bg-linear-to-r from-rose-800 via-rose-500 to-rose-800 shrink-0" />
+
+      {/* Countdown bar */}
+      <div className="h-1 bg-white/5 shrink-0">
+        <div
+          className="h-full bg-rose-500/55 transition-[width] duration-1000 ease-linear"
+          style={{ width: `${porcentaje}%` }}
+        />
+      </div>
+
+      <div className="flex flex-1 flex-col items-center justify-center px-6 py-8 text-center">
+
+        {/* Ícono error */}
+        <div className="em-icon mb-5 flex h-24 w-24 items-center justify-center rounded-full bg-rose-500/12 ring-4 ring-rose-500/25">
+          <XCircle size={50} className="text-rose-400" strokeWidth={1.5} />
         </div>
 
-        {/* Si viene alumno, lo mostramos */}
-        {alumno && (
-          <div className="mt-6 rounded-xl bg-gray-50 p-4 space-y-1 text-lg">
-            <div>
-              👤 Alumno:{" "}
-              <b>
-                {alumno.nombre ?? "—"} {alumno.apellido ?? ""}
-              </b>
-            </div>
-            {alumno.documento && (
-              <div>
-                🪪 DNI: <b>{alumno.documento}</b>
-              </div>
-            )}
-            {alumno.estado_id != null && (
-              <div>
-                🧾 Estado ID: <b>{alumno.estado_id}</b>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Si viene plan, lo mostramos (vencimiento / ingresos) */}
-        {plan && (
-          <div className="mt-4 rounded-xl bg-gray-50 p-4 space-y-1 text-lg">
-            {plan.fin && (
-              <div>
-                📅 Vence: <b>{plan.fin}</b>
-              </div>
-            )}
-            {plan.ingresos_restantes != null && (
-              <div>
-                🔢 Ingresos restantes: <b>{plan.ingresos_restantes}</b>
-              </div>
-            )}
-          </div>
-        )}
-        <div className="flex justify-center items-center">
-            <button
-            onClick={onClose}
-            className="mt-6 w-full bg-black text-white py-3 rounded-xl font-semibold">
-            Continuar
-            </button>
+        {/* Título + descripción */}
+        <div className="em-content">
+          <span className="text-[11px] font-semibold uppercase tracking-[0.3em] text-rose-400">
+            Acceso denegado
+          </span>
+          <h2 className="em-d mt-2 text-5xl md:text-6xl font-black uppercase text-white leading-tight">
+            {titulo}
+          </h2>
+          <p className="mt-4 max-w-sm mx-auto text-base font-medium text-white leading-relaxed">
+            {desc}
+          </p>
         </div>
+
+        {/* Hint recepción */}
+        <div className="em-content mt-8 flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-5 py-2.5 text-sm font-semibold text-white">
+          <RefreshCw size={15} className="text-rose-400" />
+          Dirigite a recepción para más información
+        </div>
+
+        {/* Botón cerrar con countdown */}
+        <button
+          onClick={onClose}
+          className="em-content mt-5 rounded-2xl border border-white/20 bg-white/8 px-8 py-2.5 text-sm font-semibold text-white hover:bg-white/15 transition-all"
+        >
+          Intentar de nuevo · {restante}s
+        </button>
       </div>
     </div>
   );

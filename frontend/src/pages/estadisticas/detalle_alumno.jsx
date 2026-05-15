@@ -1,30 +1,113 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { getAlumnoDetalle } from "../../api/alumnos_api";
-import { ArrowLeft, BadgeCheck, Ban, CreditCard, RefreshCw } from "lucide-react";
-import SubmitButton from "../../components/form/submit_button";
-import Card from "../../components/form/card"; // ✅ tu Card nueva
+import { ArrowLeft, BadgeCheck, Ban, RefreshCw, CreditCard, TrendingUp, Zap, Clock } from "lucide-react";
 import { formatearFechaAR } from "../../components/form/formatear_fecha";
+import DataGrid from "../../components/table/DataGrid";
+
+/* ── helpers ─────────────────────────────────────────────────────────────── */
+
+function money(v) {
+  return Number(v || 0).toLocaleString("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 });
+}
+
+function fmtFecha(val) {
+  if (!val) return "—";
+  return formatearFechaAR(String(val).slice(0, 10)) || "—";
+}
+
+function iniciales(nombre, apellido) {
+  return ((String(apellido || "")[0] || "") + (String(nombre || "")[0] || "")).toUpperCase() || "?";
+}
+
+const METODO_STYLES = {
+  EFECTIVO:      { bg: "bg-emerald-50 text-emerald-700 border-emerald-200", label: "Efectivo" },
+  TRANSFERENCIA: { bg: "bg-blue-50 text-blue-700 border-blue-200",          label: "Transferencia" },
+  TARJETA:       { bg: "bg-violet-50 text-violet-700 border-violet-200",    label: "Tarjeta" },
+  DEBITO:        { bg: "bg-orange-50 text-orange-700 border-orange-200",    label: "Débito" },
+};
+
+function MetodoBadge({ metodo }) {
+  const key   = String(metodo || "").toUpperCase();
+  const style = METODO_STYLES[key] ?? { bg: "bg-slate-50 text-slate-600 border-slate-200", label: metodo || "—" };
+  return (
+    <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-bold ${style.bg}`}>
+      {style.label}
+    </span>
+  );
+}
+
+/* ── columnas historial ───────────────────────────────────────────────────── */
+
+function buildHistorialColumns(planActualId) {
+  return [
+    {
+      key: "tipoplan_desc",
+      label: "Plan",
+      sortable: true,
+      render: (row, val) => (
+        <div className="flex items-center gap-1.5">
+          {row.plan_id === planActualId && <Zap size={10} className="text-blue-500 shrink-0" />}
+          <span className="font-semibold text-slate-900">{val || "—"}</span>
+        </div>
+      ),
+    },
+    {
+      key: "inicio",
+      label: "Inicio",
+      sortable: true,
+      className: "text-slate-600",
+      render: (_, val) => fmtFecha(val),
+    },
+    {
+      key: "fin",
+      label: "Fin",
+      sortable: true,
+      className: "text-slate-600",
+      render: (_, val) => fmtFecha(val),
+    },
+    {
+      key: "monto_pagado",
+      label: "Monto",
+      sortable: true,
+      render: (_, val) => <span className="font-bold text-blue-700">{money(val)}</span>,
+    },
+    {
+      key: "metodo_pago",
+      label: "Método",
+      render: (row) => <MetodoBadge metodo={row.metodo_pago} />,
+    },
+    {
+      key: "ingresos_disponibles",
+      label: "Ingresos disp.",
+      className: "hidden sm:table-cell",
+      headerClassName: "hidden sm:table-cell",
+      render: (row) => (
+        <div className="inline-flex items-center gap-1">
+          <Clock size={10} className="text-slate-400" />
+          <span className="text-slate-600">{row.ingresos_disponibles ?? "—"}</span>
+        </div>
+      ),
+    },
+  ];
+}
+
+/* ── página ──────────────────────────────────────────────────────────────── */
 
 export default function DetalleAlumnoPage() {
   const { id } = useParams();
-  const nav = useNavigate();
+  const nav    = useNavigate();
 
-  const [data, setData] = useState(null);
+  const [data, setData]         = useState(null);
   const [cargando, setCargando] = useState(false);
-  const [error, setError] = useState(null);
+  const [error, setError]       = useState(null);
 
   async function cargar() {
     setCargando(true);
     setError(null);
     try {
       const r = await getAlumnoDetalle(id);
-
-      if (!r?.ok) {
-        setError(r?.mensaje || "No se pudo cargar el alumno");
-        setData(null);
-        return;
-      }
+      if (!r?.ok) { setError(r?.mensaje || "No se pudo cargar el alumno"); setData(null); return; }
       setData(r);
     } catch (e) {
       setError(e?.response?.data?.mensaje || e?.message || "Error inesperado");
@@ -34,219 +117,125 @@ export default function DetalleAlumnoPage() {
     }
   }
 
-  useEffect(() => {
-    cargar();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
+  useEffect(() => { cargar(); }, [id]);
 
-  const alumno = data?.alumno;
+  const alumno     = data?.alumno;
   const planActual = data?.plan_actual;
-  const planes = data?.planes || [];
-  const resumen = data?.resumen;
+  const planes     = data?.planes || [];
+  const resumen    = data?.resumen;
 
-  const restringido = useMemo(() => {
+  const activo = useMemo(() => {
     const t = String(alumno?.estado_desc || "").toLowerCase();
-    return t.includes("restring") || t.includes("bloq") || t.includes("inactiv");
+    return !t.includes("restring") && !t.includes("bloq") && !t.includes("inactiv");
   }, [alumno]);
 
-  const loadingCards = cargando && !data;
+  const historialCols = useMemo(
+    () => buildHistorialColumns(planActual?.plan_id),
+    [planActual]
+  );
+
+  const nombreCompleto = alumno
+    ? `${alumno.gym_persona_apellido} ${alumno.gym_persona_nombre}`
+    : "Detalle de alumno";
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4">
-      <div className="mx-auto w-full max-w-6xl">
-        <div className="rounded-3xl border bg-white shadow-sm p-5 md:p-6">
-          {/* Header */}
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div className="flex items-start gap-3">
-              <SubmitButton
-                type="button"
-                onClick={() => nav(-1)}
-                className="bg-blue-800"
-              >
-                <span className="inline-flex items-center gap-2">
-                  <ArrowLeft size={16} />
-                  Volver
-                </span>
-              </SubmitButton>
+    <div className="min-h-screen bg-slate-50 p-3 sm:p-6">
+      <div className="mx-auto w-full max-w-5xl space-y-4">
 
+        {/* ── ENCABEZADO ── */}
+        <div className="overflow-hidden rounded-2xl border border-blue-100 bg-white shadow-sm shadow-blue-500/10">
+          <div className="h-1 w-full bg-linear-to-r from-blue-600 via-blue-500 to-cyan-400" />
+          <div className="flex flex-col gap-4 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3">
+              <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-lg font-extrabold text-white shadow-sm ${activo ? "bg-blue-600 shadow-blue-500/30" : "bg-slate-400"}`}>
+                {alumno ? iniciales(alumno.gym_persona_nombre, alumno.gym_persona_apellido) : "?"}
+              </div>
               <div>
-                <h1 className="text-2xl md:text-3xl font-extrabold">
-                  {alumno
-                    ? `${alumno.gym_persona_apellido} ${alumno.gym_persona_nombre}`
-                    : "Detalle de alumno"}
-                </h1>
-                <p className="mt-1 text-sm text-gray-600 font-bold">
-                  DNI: {alumno?.gym_persona_documento || "—"} · Email:{" "}
-                  {alumno?.gym_persona_email || "—"}
+                <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide ${activo ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-red-50 text-red-700 border-red-200"}`}>
+                  {activo ? <BadgeCheck size={10} /> : <Ban size={10} />}
+                  {alumno?.estado_desc || "—"}
+                </span>
+                <h1 className="mt-1 text-xl font-extrabold text-slate-900 sm:text-2xl">{nombreCompleto}</h1>
+                <p className="mt-0.5 text-sm text-slate-500">
+                  DNI: {alumno?.gym_persona_documento || "—"}
+                  {alumno?.gym_persona_email && <> · {alumno.gym_persona_email}</>}
                 </p>
               </div>
             </div>
-
-            <SubmitButton
-              type="button"
-              onClick={cargar}
-              disabled={cargando}
-              className="bg-blue-800"
-            >
-              <RefreshCw size={16} className={cargando ? "animate-spin" : ""} />
-              {cargando ? "Cargando..." : "Actualizar"}
-            </SubmitButton>
-          </div>
-
-          {/* Error */}
-          {error && (
-            <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-              {error}
-            </div>
-          )}
-
-          {/* Cards principales */}
-          <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-3">
-            <Card
-              title="Estado"
-              icon={restringido ? <Ban size={18} /> : <BadgeCheck size={18} />}
-              value={alumno?.estado_desc || "—"}
-              subtitle={restringido ? "Restringido" : "Habilitado"}
-              tone={restringido ? "danger" : "ok"}
-              loading={loadingCards}
-            />
-
-            <Card
-              title="Plan actual"
-              icon={<CreditCard size={18} />}
-              value={planActual?.tipoplan_desc || "—"}
-              subtitle={
-                planActual?.fin
-                  ? `Vence: ${formatearFechaAR(String(planActual.fin).slice(0, 10))}`
-                  : "Sin plan"
-              }
-              tone={planActual?.vigente_hoy ? "info" : "default"}
-              loading={loadingCards}
-            />
-
-            <Card
-              title="Ingresos disponibles"
-              icon={<CreditCard size={18} />}
-              value={
-                planActual?.ingresos_disponibles != null
-                  ? String(planActual.ingresos_disponibles)
-                  : "—"
-              }
-              subtitle={planActual?.vigente_hoy ? "Plan vigente hoy" : "No vigente hoy"}
-              tone={
-                planActual?.vigente_hoy && Number(planActual?.ingresos_disponibles ?? 0) > 0
-                  ? "ok"
-                  : "danger"
-              }
-              loading={loadingCards}
-            />
-          </div>
-
-          {/* Resumen pagos */}
-          <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-3">
-            <MiniStat
-              label="Cantidad de planes/pagos"
-              value={String(resumen?.total_pagos ?? planes.length)}
-            />
-            <MiniStat
-              label="Total recaudado"
-              value={money(resumen?.total_recaudado ?? 0)}
-            />
-            <MiniStat
-              label="Último pago (aprox)"
-              value={
-                resumen?.ultimo_pago_fecha ||
-                (planes?.[0]?.inicio ? String(planes[0].inicio).slice(0, 10) : "—")
-              }
-            />
-          </div>
-
-          {/* Historial de planes/pagos */}
-          <div className="mt-6">
-            <h2 className="text-lg font-extrabold">Historial de planes / pagos</h2>
-            <p className="text-sm text-gray-600 mt-1">Pagos hechos por el alumno</p>
-
-            <div className="mt-4 overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-left text-gray-500">
-                    <th className="py-3 pr-3">Plan</th>
-                    <th className="py-3 pr-3">Inicio</th>
-                    <th className="py-3 pr-3">Fin</th>
-                    <th className="py-3 pr-3">Monto</th>
-                    <th className="py-3 pr-3">Método</th>
-                    <th className="py-3 pr-3">Ingresos disp.</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {cargando ? (
-                    Array.from({ length: 8 }).map((_, i) => (
-                      <tr key={i} className="border-t">
-                        <td className="py-4 pr-3">
-                          <div className="h-4 w-40 bg-gray-100 rounded animate-pulse" />
-                        </td>
-                        <td className="py-4 pr-3">
-                          <div className="h-4 w-20 bg-gray-100 rounded animate-pulse" />
-                        </td>
-                        <td className="py-4 pr-3">
-                          <div className="h-4 w-20 bg-gray-100 rounded animate-pulse" />
-                        </td>
-                        <td className="py-4 pr-3">
-                          <div className="h-4 w-24 bg-gray-100 rounded animate-pulse" />
-                        </td>
-                        <td className="py-4 pr-3">
-                          <div className="h-4 w-24 bg-gray-100 rounded animate-pulse" />
-                        </td>
-                        <td className="py-4 pr-3">
-                          <div className="h-4 w-16 bg-gray-100 rounded animate-pulse" />
-                        </td>
-                      </tr>
-                    ))
-                  ) : planes.length ? (
-                    planes.map((pl) => (
-                      <tr key={pl.plan_id} className="border-t">
-                        <td className="py-4 pr-3 font-semibold">
-                          {pl.tipoplan_desc || "—"}
-                        </td>
-                        <td className="py-4 pr-3">
-                          {pl.inicio ? String(pl.inicio).slice(0, 10) : "—"}
-                        </td>
-                        <td className="py-4 pr-3">
-                          {pl.fin ? String(pl.fin).slice(0, 10) : "—"}
-                        </td>
-                        <td className="py-4 pr-3">{money(pl.monto_pagado)}</td>
-                        <td className="py-4 pr-3">{pl.metodo_pago || "—"}</td>
-                        <td className="py-4 pr-3">{pl.ingresos_disponibles ?? "—"}</td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr className="border-t">
-                      <td colSpan={6} className="py-6 text-center text-gray-500">
-                        No hay historial de planes/pagos para este alumno.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+            <div className="flex items-center gap-2">
+              <button type="button" onClick={() => nav(-1)}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition shadow-sm">
+                <ArrowLeft size={14} /> Volver
+              </button>
+              <button type="button" onClick={cargar} disabled={cargando}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white shadow-sm shadow-blue-500/20 hover:bg-blue-500 transition disabled:opacity-50">
+                <RefreshCw size={13} className={cargando ? "animate-spin" : ""} />
+                {cargando ? "…" : "Actualizar"}
+              </button>
             </div>
           </div>
-
         </div>
+
+        {/* ── ERROR ── */}
+        {error && (
+          <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
+        )}
+
+        {/* ── CARDS PLAN ── */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="rounded-2xl border border-blue-200 bg-linear-to-br from-blue-600 to-blue-500 px-4 py-4 shadow-sm shadow-blue-500/20">
+            <div className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-blue-100">
+              <CreditCard size={11} /> Plan actual
+            </div>
+            <p className="mt-1.5 text-xl font-extrabold text-white leading-tight">
+              {cargando ? "…" : planActual?.tipoplan_desc || "Sin plan"}
+            </p>
+            <p className="mt-0.5 text-xs text-blue-200">
+              {planActual?.fin ? `Vence: ${fmtFecha(planActual.fin)}` : "Sin plan vigente"}
+            </p>
+          </div>
+
+          <div className={`rounded-2xl border px-4 py-4 shadow-sm ${planActual?.vigente_hoy && Number(planActual?.ingresos_disponibles ?? 0) > 0 ? "border-emerald-200 bg-emerald-50" : "border-red-200 bg-red-50"}`}>
+            <div className={`inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider ${planActual?.vigente_hoy && Number(planActual?.ingresos_disponibles ?? 0) > 0 ? "text-emerald-600" : "text-red-500"}`}>
+              <Zap size={11} /> Ingresos disp.
+            </div>
+            <p className={`mt-1.5 text-2xl font-extrabold leading-tight ${planActual?.vigente_hoy && Number(planActual?.ingresos_disponibles ?? 0) > 0 ? "text-emerald-700" : "text-red-700"}`}>
+              {cargando ? "…" : planActual?.ingresos_disponibles ?? "—"}
+            </p>
+            <p className={`mt-0.5 text-xs ${planActual?.vigente_hoy ? "text-emerald-600" : "text-red-500"}`}>
+              {planActual?.vigente_hoy ? "Plan vigente hoy" : "No vigente hoy"}
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-sm">
+            <div className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+              <TrendingUp size={11} /> Total recaudado
+            </div>
+            <p className="mt-1.5 text-xl font-extrabold text-slate-900 leading-tight">
+              {cargando ? "…" : money(resumen?.total_recaudado ?? 0)}
+            </p>
+            <p className="mt-0.5 text-xs text-slate-500">
+              {resumen?.total_pagos ?? planes.length} {(resumen?.total_pagos ?? planes.length) === 1 ? "pago" : "pagos"}
+            </p>
+          </div>
+        </div>
+
+        {/* ── HISTORIAL ── */}
+        <DataGrid
+          title="Historial de planes / pagos"
+          subtitle="Todos los pagos registrados para este alumno"
+          rows={planes}
+          columns={historialCols}
+          keyField="plan_id"
+          loading={cargando}
+          searchable
+          searchPlaceholder="Buscar por plan o método…"
+          emptyMessage="No hay historial de planes/pagos para este alumno."
+          pageSize={10}
+          pageSizeOptions={[5, 10, 20]}
+        />
+
       </div>
     </div>
   );
-}
-
-function MiniStat({ label, value }) {
-  return (
-    <div className="rounded-2xl border bg-white p-4">
-      <div className="text-xs text-gray-500">{label}</div>
-      <div className="mt-1 text-lg font-extrabold">{value}</div>
-    </div>
-  );
-}
-
-function money(v) {
-  const n = Number(v || 0);
-  return n.toLocaleString("es-AR", { style: "currency", currency: "ARS" });
 }

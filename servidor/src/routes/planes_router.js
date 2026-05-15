@@ -10,9 +10,11 @@ import { requireAuth , requireRole } from "../middleware/auth_middleware.js";
 
 export const planesRouter = Router();
 
-planesRouter.use(requireAuth,requireRole("admin"));
-planesRouter.get("/", listarPlanesController);
-planesRouter.get("/:id", obtenerPlanPorIdController);
-planesRouter.post("/", crearPlanController);
-planesRouter.put("/:id", actualizarPlanController);
-planesRouter.patch("/:id/estado", cambiarEstadoPlanController);
+// Lectura: admin y staff
+planesRouter.get("/",    requireAuth, requireRole("admin", "staff"), listarPlanesController);
+planesRouter.get("/:id", requireAuth, requireRole("admin", "staff"), obtenerPlanPorIdController);
+
+// Escritura: solo admin
+planesRouter.post("/",           requireAuth, requireRole("admin"), crearPlanController);
+planesRouter.put("/:id",         requireAuth, requireRole("admin"), actualizarPlanController);
+planesRouter.patch("/:id/estado",requireAuth, requireRole("admin"), cambiarEstadoPlanController);

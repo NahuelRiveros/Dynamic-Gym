@@ -237,11 +237,11 @@ export async function obtenerAsistencias({ desde, hasta } = {}) {
 
   const sql = `
     SELECT
-      di.gym_dia_fechaingreso AS dia,
+      DATE(di.gym_diaingreso_fechaingreso AT TIME ZONE '${TZ_AR}') AS dia,
       COUNT(*)::int AS total
     FROM gym_dia_ingreso di
-    WHERE di.gym_dia_fechaingreso >= :desde::date
-      AND di.gym_dia_fechaingreso < :hasta::date
+    WHERE di.gym_diaingreso_fechaingreso >= :desde
+      AND di.gym_diaingreso_fechaingreso < :hasta
     GROUP BY 1
     ORDER BY 1 ASC;
   `;
@@ -271,11 +271,11 @@ export async function obtenerAsistenciasHoras({ desde, hasta } = {}) {
 
   const sql = `
     SELECT
-      EXTRACT(HOUR FROM di.gym_dia_horaingreso)::int AS hora,
+      EXTRACT(HOUR FROM (di.gym_diaingreso_fechaingreso AT TIME ZONE '${TZ_AR}'))::int AS hora,
       COUNT(*)::int AS total
     FROM gym_dia_ingreso di
-    WHERE di.gym_dia_fechaingreso >= :desde::date
-      AND di.gym_dia_fechaingreso < :hasta::date
+    WHERE di.gym_diaingreso_fechaingreso >= :desde
+      AND di.gym_diaingreso_fechaingreso < :hasta
     GROUP BY 1
     ORDER BY 1 ASC;
   `;
@@ -299,14 +299,17 @@ export async function obtenerAsistenciasHoraDiaSemana({ desde, hasta } = {}) {
   const fechaDesde = desde || new Date(hoy.getFullYear(), hoy.getMonth(), 1).toISOString().slice(0, 10);
   const fechaHasta = hasta || new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0).toISOString().slice(0, 10);
 
+  // gym_dia_fechaingreso = fecha local Argentina (YYYY-MM-DD)
+  // gym_dia_horaingreso  = hora local Argentina (HH:MM:SS)
+  // ::date cast en WHERE para comparación robusta sin problemas de timezone
   const sql = `
     SELECT
-      EXTRACT(DOW FROM di.gym_dia_fechaingreso)::int AS dia_semana,
-      EXTRACT(HOUR FROM di.gym_dia_horaingreso)::int AS hora,
-      COUNT(*)::int AS total
+      EXTRACT(DOW FROM di.gym_dia_fechaingreso::date)::int AS dia_semana,
+      EXTRACT(HOUR FROM di.gym_dia_horaingreso)::int       AS hora,
+      COUNT(*)::int                                         AS total
     FROM gym_dia_ingreso di
-    WHERE di.gym_dia_fechaingreso >= :desde
-      AND di.gym_dia_fechaingreso <= :hasta
+    WHERE di.gym_dia_fechaingreso::date >= :desde::date
+      AND di.gym_dia_fechaingreso::date <= :hasta::date
     GROUP BY 1, 2
     ORDER BY 1 ASC, 2 ASC;
   `;

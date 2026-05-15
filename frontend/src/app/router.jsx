@@ -7,8 +7,8 @@ import HomePage from "../components/home_page.jsx";
 import KioskPage from "../pages/kiosk_page.jsx";
 import LoginPage from "../pages/login_page.jsx";
 import RegisterAlumnoPage from "../pages/register_page.jsx";
-import RecaudacionCalendario from "../pages/estadisticas/recaudaciones_mensual_page.jsx";
-import RecaudacionCalendarioDia from "../pages/estadisticas/recaudaciones_dias_page.jsx";
+import RecaudacionCalendario from "../pages/estadisticas/recaudacion_mensual_page.jsx";
+import RecaudacionCalendarioDia from "../pages/estadisticas/recaudacion_diaria_page.jsx";
 import AlumnosNuevosPage from "../pages/estadisticas/alumnos_nuevos.jsx";
 import VencimientosPage from "../pages/estadisticas/vencimientos_proximos.jsx";
 import HeatmapAsistenciasPage from "../pages/estadisticas/heatmap_asistencias.jsx"
@@ -17,7 +17,7 @@ import DetalleAlumnoPage from "../pages/estadisticas/detalle_alumno.jsx";
 import RegistrarPagoPage from "../pages/registrar_pago.jsx";
 import PlanesPage from "../pages/admin/planes_page.jsx";
 import StaffPage from "../pages/admin/StaffPage.jsx";
-import RecaudacionesDetallePage from "../pages/estadisticas/recaudaciones_detalle.jsx";
+import RecaudacionesDetallePage from "../pages/estadisticas/recaudacion_detalle_dia_page.jsx";
 import EditarPlanVigentePage from "../pages/admin/editar_plan_vigente_page.jsx";
 
 export const router = createBrowserRouter([

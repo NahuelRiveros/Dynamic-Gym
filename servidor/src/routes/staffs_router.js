@@ -11,8 +11,8 @@ import { requireAuth, requireRole } from "../middleware/auth_middleware.js";
 
 export const staffRouter = Router();
 
-// 🔐 protección global → solo admin
-//staffRouter.use(requireAuth, requireRole("admin"));
+// protección global → solo admin
+staffRouter.use(requireAuth, requireRole("admin"));
 
 // 📋 listar usuarios (staff/admin)
 staffRouter.get("/", listarStaffController);

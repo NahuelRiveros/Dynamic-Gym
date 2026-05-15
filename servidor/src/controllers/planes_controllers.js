@@ -13,7 +13,6 @@ export async function listarPlanesController(req, res) {
   try {
     const incluirInactivos = req.query.incluirInactivos !== "false";
     const planes = await listarPlanes({ incluirInactivos });
-    console.log(planes)
     return res.json({
       ok: true,
       data: planes,

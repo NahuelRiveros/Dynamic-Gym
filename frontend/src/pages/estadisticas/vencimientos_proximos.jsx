@@ -1,28 +1,55 @@
 import { useEffect, useMemo, useState } from "react";
 import { getVencimientos } from "../../api/estadisticas_api";
-import { CalendarClock, RefreshCw, AlertTriangle } from "lucide-react";
+import { CalendarClock, RefreshCw, AlertTriangle, Clock, Zap, User } from "lucide-react";
+import DataGrid from "../../components/table/DataGrid";
+
+/* ── helpers ─────────────────────────────────────────────────────────────── */
 
 function fmtFecha(iso) {
   if (!iso) return "—";
-  // iso puede venir con hora; recortamos YYYY-MM-DD
-  const s = String(iso).slice(0, 10);
-  const [y, m, d] = s.split("-");
+  const [y, m, d] = String(iso).slice(0, 10).split("-");
   return `${d}/${m}/${y}`;
 }
 
 function diasEntre(hoyISO, finISO) {
   if (!finISO) return null;
-  const h = new Date(hoyISO);
-  const f = new Date(String(finISO).slice(0, 10));
-  const diff = Math.ceil((f - h) / (1000 * 60 * 60 * 24));
+  const diff = Math.ceil((new Date(String(finISO).slice(0, 10)) - new Date(hoyISO)) / 86400000);
   return Number.isFinite(diff) ? diff : null;
 }
 
+function iniciales(nombre, apellido) {
+  return ((String(apellido || "")[0] || "") + (String(nombre || "")[0] || "")).toUpperCase() || "?";
+}
+
+function UrgenciaBadge({ dias }) {
+  if (dias === null) return <span className="text-slate-400 text-xs">—</span>;
+  if (dias < 0)  return <Badge red><AlertTriangle size={10} /> Vencido</Badge>;
+  if (dias === 0) return <Badge red><AlertTriangle size={10} /> Hoy</Badge>;
+  if (dias <= 2) return <Badge red><Zap size={9} /> {dias}d</Badge>;
+  if (dias <= 5) return <Badge amber><Clock size={9} /> {dias}d</Badge>;
+  return <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600 border border-slate-200">{dias}d</span>;
+}
+
+function Badge({ red, amber, children }) {
+  const cls = red
+    ? "bg-red-50 text-red-700 border-red-200"
+    : amber
+    ? "bg-amber-50 text-amber-700 border-amber-200"
+    : "bg-slate-100 text-slate-600 border-slate-200";
+  return (
+    <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-bold ${cls}`}>
+      {children}
+    </span>
+  );
+}
+
+/* ── página ──────────────────────────────────────────────────────────────── */
+
 export default function VencimientosPage() {
-  const [dias, setDias] = useState(7);
-  const [data, setData] = useState(null);
+  const [dias, setDias]         = useState(7);
+  const [data, setData]         = useState(null);
   const [cargando, setCargando] = useState(false);
-  const [error, setError] = useState(null);
+  const [error, setError]       = useState(null);
 
   const hoyISO = useMemo(() => new Date().toISOString().slice(0, 10), []);
 
@@ -31,11 +58,7 @@ export default function VencimientosPage() {
     setError(null);
     try {
       const r = await getVencimientos({ dias });
-      if (!r?.ok) {
-        setError(r?.mensaje || "No se pudo cargar vencimientos");
-        setData(null);
-        return;
-      }
+      if (!r?.ok) { setError(r?.mensaje || "No se pudo cargar vencimientos"); setData(null); return; }
       setData(r);
     } catch (e) {
       setError(e?.response?.data?.mensaje || e?.message || "Error inesperado");
@@ -45,150 +68,174 @@ export default function VencimientosPage() {
     }
   }
 
-  useEffect(() => {
-    cargar();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dias]);
+  useEffect(() => { cargar(); }, [dias]);
 
-  const items = data?.items || [];
-  const total = Number(data?.total || 0);
+  const items    = data?.items || [];
+  const total    = Number(data?.total || 0);
+  const urgentes = useMemo(() =>
+    items.filter((it) => { const d = diasEntre(hoyISO, it.fin); return d !== null && d <= 2; }).length,
+    [items, hoyISO]
+  );
+
+  /* ── columnas ── */
+  const columns = useMemo(() => [
+    {
+      key: "apellido",
+      label: "Alumno",
+      sortable: true,
+      searchable: true,
+      render: (row) => {
+        const diasRest = diasEntre(hoyISO, row.fin);
+        const critico  = diasRest !== null && diasRest <= 2;
+        return (
+          <div className="flex items-center gap-2">
+            <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-extrabold text-white shadow-sm ${critico ? "bg-red-500" : "bg-blue-600 shadow-blue-500/30"}`}>
+              {iniciales(row.nombre, row.apellido)}
+            </div>
+            <span className="font-semibold text-slate-900">{row.apellido} {row.nombre}</span>
+          </div>
+        );
+      },
+    },
+    {
+      key: "documento",
+      label: "DNI",
+      sortable: true,
+      searchable: true,
+      className: "text-slate-600",
+    },
+    {
+      key: "plan",
+      label: "Plan",
+      className: "text-slate-600",
+      render: (_, val) => val || "—",
+    },
+    {
+      key: "inicio",
+      label: "Inicio",
+      sortable: true,
+      className: "text-slate-600 hidden sm:table-cell",
+      headerClassName: "hidden sm:table-cell",
+      render: (_, val) => fmtFecha(val),
+    },
+    {
+      key: "fin",
+      label: "Vence el",
+      sortable: true,
+      render: (row) => {
+        const diasRest = diasEntre(hoyISO, row.fin);
+        const critico  = diasRest !== null && diasRest <= 2;
+        return (
+          <span className={critico ? "font-bold text-red-700" : "text-slate-600"}>
+            {fmtFecha(row.fin)}
+          </span>
+        );
+      },
+    },
+    {
+      key: "ingresos_disponibles",
+      label: "Ingresos",
+      className: "hidden md:table-cell",
+      headerClassName: "hidden md:table-cell",
+      render: (row) => (
+        <div className="inline-flex items-center gap-1">
+          <User size={10} className="text-slate-400" />
+          <span className="text-slate-600">{row.ingresos_disponibles ?? "—"}</span>
+        </div>
+      ),
+    },
+    {
+      key: "_urgencia",
+      label: "Vence en",
+      render: (row) => <UrgenciaBadge dias={diasEntre(hoyISO, row.fin)} />,
+    },
+  ], [hoyISO]);
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4">
-      <div className="mx-auto w-full max-w-6xl">
-        <div className="rounded-3xl border bg-white shadow-sm p-5 md:p-6">
-          {/* Header */}
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+    <div className="min-h-screen bg-slate-50 p-3 sm:p-6">
+      <div className="mx-auto w-full max-w-6xl space-y-4">
+
+        {/* ── ENCABEZADO ── */}
+        <div className="overflow-hidden rounded-2xl border border-blue-100 bg-white shadow-sm shadow-blue-500/10">
+          <div className="h-1 w-full bg-linear-to-r from-blue-600 via-blue-500 to-cyan-400" />
+          <div className="flex flex-col gap-4 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <div className="inline-flex items-center gap-2 rounded-full bg-amber-500/10 px-4 py-1 text-sm font-semibold text-amber-700">
-                <CalendarClock size={16} />
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-600 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-white shadow-sm shadow-blue-500/30">
+                <CalendarClock size={11} />
                 Estadísticas
-              </div>
-              <h1 className="mt-3 text-2xl md:text-3xl font-extrabold">
-                Vencimientos próximos
-              </h1>
-              <p className="mt-1 text-sm text-gray-600">
-                Planes que vencen entre hoy y los próximos {dias} días.
+              </span>
+              <h1 className="mt-2 text-2xl font-extrabold text-slate-900">Vencimientos próximos</h1>
+              <p className="mt-0.5 text-sm text-slate-500">
+                Planes que vencen en los próximos {dias} días
               </p>
             </div>
-
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-              <div className="flex items-center gap-2 rounded-2xl border px-3 py-2">
-                <span className="text-sm text-gray-600">Días</span>
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 shadow-sm">
+                <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Días</span>
                 <input
-                  type="number"
+                  type="number" min={1} max={60}
                   value={dias}
-                  min={1}
-                  max={60}
                   onChange={(e) => setDias(Number(e.target.value || 7))}
-                  className="w-20 outline-none"
+                  className="w-14 text-sm font-bold text-slate-800 outline-none"
                 />
               </div>
-
               <button
                 type="button"
                 onClick={cargar}
                 disabled={cargando}
-                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-black text-white px-4 py-2 font-semibold disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white shadow-sm shadow-blue-500/20 hover:bg-blue-500 transition disabled:opacity-50"
               >
-                <RefreshCw size={16} className={cargando ? "animate-spin" : ""} />
-                {cargando ? "Cargando..." : "Actualizar"}
+                <RefreshCw size={13} className={cargando ? "animate-spin" : ""} />
+                {cargando ? "…" : "Actualizar"}
               </button>
             </div>
           </div>
-
-          {/* Error */}
-          {error && (
-            <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-              {error}
-            </div>
-          )}
-
-          {/* Resumen */}
-          <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-3">
-            <StatCard label="Rango" value={`Hoy → +${dias} días`} />
-            <StatCard label="Total vencimientos" value={String(total)} />
-            <StatCard label="Fecha de hoy" value={fmtFecha(hoyISO)} />
-          </div>
-
-          {/* Lista */}
-          <div className="mt-6 overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-gray-500">
-                  <th className="py-2 pr-3">Alumno</th>
-                  <th className="py-2 pr-3">DNI</th>
-                  <th className="py-2 pr-3">Plan</th>
-                  <th className="py-2 pr-3">Inicio</th>
-                  <th className="py-2 pr-3">Fin</th>
-                  <th className="py-2 pr-3">Ingresos</th>
-                  <th className="py-2 pr-3">Días</th>
-                </tr>
-              </thead>
-              <tbody>
-                {cargando ? (
-                  <tr>
-                    <td className="py-4 text-gray-600" colSpan={7}>
-                      Cargando…
-                    </td>
-                  </tr>
-                ) : items.length === 0 ? (
-                  <tr>
-                    <td className="py-4 text-gray-600" colSpan={7}>
-                      No hay vencimientos en este rango.
-                    </td>
-                  </tr>
-                ) : (
-                  items.map((it, idx) => {
-                    const diasRest = diasEntre(hoyISO, it.fin);
-                    const urgente = diasRest != null && diasRest <= 4;
-
-                    return (
-                      <tr key={`${it.alumno_id}-${it.fecha_id}-${idx}`} className="border-t">
-                        <td className="py-3 pr-3 font-semibold">
-                          {it.nombre} {it.apellido}
-                        </td>
-                        <td className="py-3 pr-3">{it.documento}</td>
-                        <td className="py-3 pr-3">{it.plan ?? "—"}</td>
-                        <td className="py-3 pr-3">{fmtFecha(it.inicio)}</td>
-                        <td className="py-3 pr-3">
-                          <span className={urgente ? "text-red-700 font-bold" : ""}>
-                            {fmtFecha(it.fin)}
-                          </span>
-                        </td>
-                        <td className="py-3 pr-3">{it.ingresos_disponibles ?? "—"}</td>
-                        <td className="py-3 pr-3">
-                          {urgente ? (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-red-50 text-red-700 px-2 py-1 text-xs font-bold">
-                              <AlertTriangle size={14} />
-                              {diasRest} días
-                            </span>
-                          ) : (
-                            <span className="text-gray-700">{diasRest ?? "—"}</span>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          <p className="mt-4 text-xs text-gray-500">
-            * “Días” = diferencia entre hoy y la fecha fin. Marcamos urgente si ≤ 2 días.
-          </p>
         </div>
+
+        {/* ── STATS ── */}
+        <div className="grid grid-cols-3 gap-3">
+          <StatCard icon={<CalendarClock size={13} />} label="Total"     value={String(total)}    highlight />
+          <StatCard icon={<AlertTriangle size={13} />} label="Críticos ≤2d" value={String(urgentes)} urgent={urgentes > 0} />
+          <StatCard icon={<Clock size={13} />}         label="Rango"     value={`+${dias} días`} />
+        </div>
+
+        {/* ── ERROR ── */}
+        {error && (
+          <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
+        )}
+
+        {/* ── TABLA ── */}
+        <DataGrid
+          rows={items}
+          columns={columns}
+          keyField="alumno_id"
+          loading={cargando}
+          searchable
+          searchPlaceholder="Buscar por nombre, apellido o DNI…"
+          emptyMessage="No hay vencimientos en este rango."
+          pageSize={15}
+          pageSizeOptions={[10, 15, 25, 50]}
+        />
+
       </div>
     </div>
   );
 }
 
-function StatCard({ label, value }) {
+function StatCard({ icon, label, value, highlight, urgent }) {
   return (
-    <div className="rounded-2xl border bg-white p-4">
-      <div className="text-xs text-gray-500">{label}</div>
-      <div className="mt-1 text-lg font-extrabold">{value}</div>
+    <div className={[
+      "rounded-2xl border px-4 py-3.5 shadow-sm",
+      highlight ? "border-blue-200 bg-linear-to-br from-blue-600 to-blue-500 shadow-blue-500/20"
+        : urgent  ? "border-red-200 bg-red-50"
+        : "border-slate-200 bg-white",
+    ].join(" ")}>
+      <div className={`inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider ${highlight ? "text-blue-100" : urgent ? "text-red-500" : "text-slate-500"}`}>
+        {icon}{label}
+      </div>
+      <p className={`mt-1.5 text-xl font-extrabold leading-tight ${highlight ? "text-white" : urgent ? "text-red-700" : "text-slate-900"}`}>
+        {value}
+      </p>
     </div>
   );
 }

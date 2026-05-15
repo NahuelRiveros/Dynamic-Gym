@@ -1,12 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { kioskIngreso } from "../api/kiosk_api.js";
 import { getAlumnosCumples } from "../api/alumnos_api.js";
 import KioskResultModal from "../components/modal/kiosk_result_modal.jsx";
 import KioskErrorModal from "../components/modal/kiosk_error_modal.jsx";
-import SubmitButton from "../components/form/submit_button.jsx";
 import AlertasDropdown from "../components/alertas/AlertasDropdown.jsx";
-
-import { BadgeCheck, TriangleAlert } from "lucide-react";
+import { Dumbbell } from "lucide-react";
 
 import sonidoOk from "../sounds/IngresoCorrecto.m4a";
 import sonidoError from "../sounds/IngresoErroneo.wav";
@@ -17,29 +15,63 @@ export default function KioskPage() {
   const [cargando, setCargando] = useState(false);
   const [mostrarOk, setMostrarOk] = useState(false);
   const [mostrarError, setMostrarError] = useState(false);
-
-  // 🎂 cumpleaños
-  const [cumples, setCumples] = useState({
-    hoy: [],
-    proximos: [],
-  });
+  const [hora, setHora] = useState("");
+  const [cumples, setCumples] = useState({ hoy: [], proximos: [] });
+  const inputRef = useRef(null);
 
   const dniLimpio = dni.trim();
   const dniValido = dniLimpio.length >= 6;
+
+  // Reloj en vivo con timezone Argentina
+  useEffect(() => {
+    function tick() {
+      setHora(
+        new Date().toLocaleTimeString("es-AR", {
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+          hour12: false,
+          timeZone: "America/Argentina/Buenos_Aires",
+        })
+      );
+    }
+    tick();
+    const t = setInterval(tick, 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  // Auto-focus input cuando se cierran los modales
+  useEffect(() => {
+    if (!mostrarOk && !mostrarError) {
+      const t = setTimeout(() => inputRef.current?.focus(), 80);
+      return () => clearTimeout(t);
+    }
+  }, [mostrarOk, mostrarError]);
+
+  // Cargar cumpleaños
+  useEffect(() => {
+    async function cargar() {
+      try {
+        const data = await getAlumnosCumples({ dias: 3 });
+        setCumples({ hoy: data.hoy || [], proximos: data.proximos || [] });
+      } catch {}
+    }
+    cargar();
+    const t = setInterval(cargar, 60000);
+    return () => clearInterval(t);
+  }, []);
 
   function reproducirSonido(src) {
     try {
       const audio = new Audio(src);
       audio.currentTime = 0;
       audio.play().catch(() => {});
-    } catch (error) {
-      console.error("No se pudo reproducir el sonido:", error);
-    }
+    } catch {}
   }
 
   async function onSubmit(e) {
     e.preventDefault();
-    if (!dniValido) return;
+    if (!dniValido || cargando) return;
 
     setResp(null);
     setCargando(true);
@@ -47,6 +79,7 @@ export default function KioskPage() {
     try {
       const r = await kioskIngreso(dniLimpio);
       setResp(r);
+      setDni("");
 
       if (r?.ok) {
         reproducirSonido(sonidoOk);
@@ -57,167 +90,133 @@ export default function KioskPage() {
         setMostrarError(true);
         setMostrarOk(false);
       }
-
-      setDni("");
     } catch (err) {
-      const mensaje =
-        err?.response?.data?.mensaje || err?.message || "Error inesperado";
-
+      const data = err?.response?.data;
       reproducirSonido(sonidoError);
-      setResp({ ok: false, mensaje });
+      setResp({
+        ok: false,
+        codigo: data?.codigo || "ERROR",
+        mensaje: data?.mensaje || err?.message || "Error inesperado",
+      });
       setMostrarError(true);
       setMostrarOk(false);
+      setDni("");
     } finally {
       setCargando(false);
     }
   }
 
-  // 🎂 cargar cumpleaños
-  useEffect(() => {
-    async function cargarCumples() {
-      try {
-        const data = await getAlumnosCumples({ dias: 3 });
-        setCumples({
-          hoy: data.hoy || [],
-          proximos: data.proximos || [],
-        });
-      } catch (error) {
-        console.error("Error cargando cumpleaños:", error);
-      }
-    }
-
-    cargarCumples();
-
-    // 🔄 refrescar cada 1 min
-    const interval = setInterval(cargarCumples, 60000);
-    return () => clearInterval(interval);
-  }, []);
-
-  useEffect(() => {
-    if (mostrarOk || mostrarError) {
-      const t = setTimeout(() => {
-        setMostrarOk(false);
-        setMostrarError(false);
-        setResp(null);
-      }, 30000);
-      return () => clearTimeout(t);
-    }
-  }, [mostrarOk, mostrarError]);
-
-  const ok = resp?.ok === true;
-  const alumno = resp?.alumno;
-  const plan = resp?.plan;
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-100 via-blue-50 to-blue-100">
-      <div className="relative min-h-screen flex items-center justify-center p-4">
-        
-        {/* 🔔 ALERTAS */}
-        <div className="absolute top-4 right-4 z-10">
-          <AlertasDropdown hoy={cumples.hoy} proximos={cumples.proximos} />
-        </div>
+    <>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;900&family=DM+Sans:wght@400;500;600&display=swap');
+        .kiosk-display { font-family: 'Barlow Condensed', sans-serif; }
+        .kiosk-body    { font-family: 'DM Sans', sans-serif; }
 
-        <div className="w-full max-w-md rounded-3xl border border-black/5 bg-white/80 shadow-2xl backdrop-blur p-6 text-center">
-          
-          <div className="inline-flex items-center gap-2 rounded-full bg-blue-600/10 px-4 py-1 text-sm font-semibold text-blue-700">
-            Control de ingreso
+        @keyframes kiosk-pulse-ring {
+          0%   { box-shadow: 0 0 0 0   rgba(14,165,233,0.35); }
+          70%  { box-shadow: 0 0 0 14px rgba(14,165,233,0);   }
+          100% { box-shadow: 0 0 0 0   rgba(14,165,233,0);    }
+        }
+        .kiosk-input:focus {
+          animation: kiosk-pulse-ring 2.2s ease-in-out infinite;
+        }
+      `}</style>
+
+      <div className="kiosk-body min-h-screen bg-[#060a12] flex flex-col overflow-hidden select-none">
+
+        {/* ── TOP BAR ── */}
+        <div className="flex items-center justify-between px-8 pt-6 pb-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-sky-500/15">
+              <Dumbbell size={22} className="text-sky-400" />
+            </div>
+            <span className="kiosk-display text-xl font-bold uppercase tracking-widest text-white">
+              Dynamic Gym
+            </span>
           </div>
 
-          <h1 className="mt-4 text-3xl font-extrabold text-gray-900">
-            Ingreso por DNI
-          </h1>
-
-          <p className="mt-2 text-sm text-gray-600">
-            Ingresá tu DNI para registrar tu asistencia.
-          </p>
-
-          <form onSubmit={onSubmit} className="mt-6 space-y-3">
-            <input
-              autoFocus
-              inputMode="numeric"
-              value={dni}
-              onChange={(e) => setDni(e.target.value)}
-              placeholder="DNI"
-              className="w-full rounded-2xl px-4 py-4 text-3xl text-gray-900 border border-gray-300 bg-white text-center font-bold focus:ring-2 focus:ring-blue-500/60"
-            />
-
-            <div className="flex justify-center">
-              <SubmitButton
-                label="Ingresar"
-                loading={cargando}
-                loadingLabel="Procesando..."
-                disabled={!dniValido}
-              />
-            </div>
-          </form>
-
-          {/* RESULTADO */}
-          {resp && (
-            <div
-              className={`mt-6 rounded-2xl border p-4 text-left ${
-                ok
-                  ? "border-blue-500/30 bg-blue-50"
-                  : "border-red-500/30 bg-red-50"
-              }`}
-            >
-              <div className="flex items-center gap-2 font-bold">
-                {ok ? (
-                  <>
-                    <BadgeCheck className="text-blue-600" size={18} />
-                    <span className="text-blue-700">Ingreso OK</span>
-                  </>
-                ) : (
-                  <>
-                    <TriangleAlert className="text-red-600" size={18} />
-                    <span className="text-red-700">Error</span>
-                  </>
-                )}
-              </div>
-
-              <div className="mt-2 text-sm text-gray-700">
-                {resp?.mensaje}
-              </div>
-
-              {(alumno?.nombre || alumno?.apellido) && (
-                <div className="mt-3 text-sm text-gray-700">
-                  Alumno:{" "}
-                  <b>
-                    {alumno?.nombre} {alumno?.apellido}
-                  </b>
-                </div>
-              )}
-
-              {plan?.ingresos_restantes != null && (
-                <div className="mt-1 text-sm text-gray-700">
-                  Ingresos restantes:{" "}
-                  <b>{plan.ingresos_restantes}</b>
-                </div>
-              )}
-            </div>
-          )}
+          <div className="flex items-center gap-5">
+            <AlertasDropdown hoy={cumples.hoy} proximos={cumples.proximos} />
+            <span className="kiosk-display text-2xl font-bold tabular-nums tracking-widest text-sky-400">
+              {hora}
+            </span>
+          </div>
         </div>
 
-        {/* MODALES */}
-        {mostrarOk && resp?.ok && (
-          <KioskResultModal
-            resp={resp}
-            onClose={() => {
-              setMostrarOk(false);
-              setResp(null);
-            }}
-          />
-        )}
+        {/* Línea de acento */}
+        <div className="h-px mx-8 bg-gradient-to-r from-transparent via-sky-500/50 to-transparent" />
 
-        {mostrarError && resp && !resp?.ok && (
-          <KioskErrorModal
-            resp={resp}
-            onClose={() => {
-              setMostrarError(false);
-              setResp(null);
-            }}
-          />
-        )}
+        {/* ── CONTENIDO CENTRAL ── */}
+        <div className="flex flex-1 items-center justify-center px-6">
+          <div className="w-full max-w-lg text-center">
+
+            <div className="mb-8">
+              <span className="text-[11px] font-semibold uppercase tracking-[0.3em] text-sky-400">
+                Control de acceso
+              </span>
+              <h1 className="kiosk-display mt-3 text-6xl md:text-7xl font-black uppercase leading-none text-white">
+                INGRESÁ TU
+                <span className="block text-sky-400">DNI</span>
+              </h1>
+              <p className="mt-4 text-gray-500 text-sm leading-relaxed">
+                Escribí o escaneá tu DNI para registrar tu asistencia.
+              </p>
+            </div>
+
+            <form onSubmit={onSubmit} className="space-y-4">
+              <input
+                ref={inputRef}
+                autoFocus
+                inputMode="numeric"
+                value={dni}
+                onChange={(e) => setDni(e.target.value)}
+                placeholder="00.000.000"
+                disabled={cargando}
+                className="kiosk-display kiosk-input w-full rounded-2xl border border-white/10 bg-white/5 px-6 py-5 text-4xl text-white text-center font-bold tracking-widest placeholder:text-gray-700 focus:border-sky-500/60 focus:bg-white/8 focus:outline-none transition-colors disabled:opacity-50"
+              />
+
+              <button
+                type="submit"
+                disabled={!dniValido || cargando}
+                className="w-full rounded-2xl bg-sky-500 py-4 text-sm font-bold uppercase tracking-wider text-white shadow-lg shadow-sky-500/25 hover:bg-sky-400 hover:scale-[1.01] active:scale-[0.99] transition-all disabled:opacity-35 disabled:pointer-events-none"
+              >
+                {cargando ? "Verificando…" : "Registrar ingreso"}
+              </button>
+            </form>
+
+            <p className="mt-6 text-[11px] uppercase tracking-wider text-gray-700">
+              Tu acceso queda registrado automáticamente
+            </p>
+          </div>
+        </div>
+
+        {/* ── BRANDING PIE ── */}
+        <div className="pb-6 text-center">
+          <div className="h-px mx-8 bg-gradient-to-r from-transparent via-white/5 to-transparent mb-4" />
+          <span className="text-[11px] uppercase tracking-[0.3em] text-gray-700">
+            Dynamic Gym · Formosa
+          </span>
+        </div>
+
       </div>
-    </div>
+
+      {/* ── MODALES ── */}
+      {mostrarOk && resp?.ok && (
+        <KioskResultModal
+          resp={resp}
+          autoCloseMs={8000}
+          onClose={() => { setMostrarOk(false); setResp(null); }}
+        />
+      )}
+
+      {mostrarError && resp && !resp.ok && (
+        <KioskErrorModal
+          resp={resp}
+          autoCloseMs={6000}
+          onClose={() => { setMostrarError(false); setResp(null); }}
+        />
+      )}
+    </>
   );
 }

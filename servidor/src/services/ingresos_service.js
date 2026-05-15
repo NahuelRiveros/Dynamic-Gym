@@ -15,19 +15,24 @@ const normalizarDocumento = (doc) =>
 
 function obtenerFechaHoraSistema() {
   const ahora = new Date();
+  const tz = "America/Argentina/Buenos_Aires";
 
-  const anio = ahora.getFullYear();
-  const mes = String(ahora.getMonth() + 1).padStart(2, "0");
-  const dia = String(ahora.getDate()).padStart(2, "0");
+  // "YYYY-MM-DD" en timezone Argentina
+  const fecha = ahora.toLocaleDateString("en-CA", { timeZone: tz });
 
-  const horas = String(ahora.getHours()).padStart(2, "0");
-  const minutos = String(ahora.getMinutes()).padStart(2, "0");
-  const segundos = String(ahora.getSeconds()).padStart(2, "0");
+  // "HH:MM:SS" en 24h en timezone Argentina
+  const hora = ahora.toLocaleTimeString("en-GB", {
+    timeZone: tz,
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  });
 
   return {
-    fecha: `${anio}-${mes}-${dia}`,
-    hora: `${horas}:${minutos}:${segundos}`,
-    fechaHora: `${anio}-${mes}-${dia} ${horas}:${minutos}:${segundos}`,
+    fecha,
+    hora,
+    fechaHora: `${fecha} ${hora}`,
   };
 }
 
@@ -181,7 +186,7 @@ export async function registrarIngresoPorDni({ dni }) {
 
     await sequelize.query(
       `
-      UPDATE gym_plan_alumno
+      UPDATE gym_fecha_disponible
       SET gym_fecha_ingresosdisponibles = :restantes,
           gym_fecha_fechacambio = :fechaHora
       WHERE gym_fecha_id = :fecha_id

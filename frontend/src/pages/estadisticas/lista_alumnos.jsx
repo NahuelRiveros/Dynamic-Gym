@@ -1,47 +1,134 @@
-//lista_alumnos.jsx
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { getAlumnosListado , actualizarEstadosAlumnos} from "../../api/alumnos_api";
-import { Search, RefreshCw, Users, ChevronLeft, ChevronRight } from "lucide-react";
+import { getAlumnosListado, actualizarEstadosAlumnos } from "../../api/alumnos_api";
+import { Users, RefreshCw, ChevronRight } from "lucide-react";
 import { formatearFechaAR } from "../../components/form/formatear_fecha";
-import SubmitButton from "../../components/form/submit_button";
+import DataGrid from "../../components/table/DataGrid";
+
+/* ── badges ─────────────────────────────────────────────────────────────── */
+
+function iniciales(nombre, apellido) {
+  const n = String(nombre || "").trim()[0] || "";
+  const a = String(apellido || "").trim()[0] || "";
+  return (a + n).toUpperCase() || "?";
+}
+
+function EstadoBadge({ desc }) {
+  const t = String(desc || "").toLowerCase();
+  const ok = !t.includes("restring") && !t.includes("bloq") && !t.includes("inactiv");
+  return (
+    <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-bold ${ok ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-red-50 text-red-700 border-red-200"}`}>
+      {desc || "—"}
+    </span>
+  );
+}
+
+function PlanBadge({ vigente }) {
+  return (
+    <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-bold ${vigente ? "bg-blue-50 text-blue-700 border-blue-200" : "bg-slate-50 text-slate-500 border-slate-200"}`}>
+      {vigente ? "Vigente" : "Sin plan"}
+    </span>
+  );
+}
+
+/* ── columnas ────────────────────────────────────────────────────────────── */
+
+const COLUMNS = [
+  {
+    key: "gym_persona_apellido",
+    label: "Alumno",
+    sortable: true,
+    searchable: true,
+    render: (row) => (
+      <div className="flex items-center gap-2.5">
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-600 text-[10px] font-extrabold text-white shadow-sm shadow-blue-500/30">
+          {iniciales(row.gym_persona_nombre, row.gym_persona_apellido)}
+        </div>
+        <div>
+          <p className="font-semibold text-slate-900 leading-tight">
+            {row.gym_persona_apellido} {row.gym_persona_nombre}
+          </p>
+          {row.gym_persona_email && (
+            <p className="text-[11px] text-slate-400 leading-tight">{row.gym_persona_email}</p>
+          )}
+        </div>
+      </div>
+    ),
+  },
+  {
+    key: "gym_persona_documento",
+    label: "DNI",
+    sortable: true,
+    searchable: true,
+    className: "text-slate-600",
+  },
+  {
+    key: "estado_desc",
+    label: "Estado",
+    sortable: true,
+    render: (row) => <EstadoBadge desc={row.estado_desc} />,
+  },
+  {
+    key: "plan_tipo_desc",
+    label: "Plan",
+    render: (row) => (
+      <div className="flex flex-col gap-1">
+        <PlanBadge vigente={row.tiene_plan_vigente} />
+        {row.plan_tipo_desc && <span className="text-[11px] text-slate-500">{row.plan_tipo_desc}</span>}
+      </div>
+    ),
+  },
+  {
+    key: "plan_fin",
+    label: "Vence",
+    className: "text-slate-600 hidden md:table-cell",
+    headerClassName: "hidden md:table-cell",
+    render: (_, val) => val ? formatearFechaAR(String(val).slice(0, 10)) : "—",
+  },
+  {
+    key: "ingresos_disponibles",
+    label: "Ingresos",
+    className: "text-slate-600 hidden sm:table-cell",
+    headerClassName: "hidden sm:table-cell",
+    render: (_, val) => val ?? "—",
+  },
+  {
+    key: "_arrow",
+    label: "",
+    searchable: false,
+    render: () => <ChevronRight size={14} className="text-slate-300" />,
+    className: "text-right",
+    headerClassName: "w-8",
+  },
+];
+
+/* ── página ──────────────────────────────────────────────────────────────── */
+
 export default function ListaAlumnosPage() {
   const nav = useNavigate();
 
-  const [q, setQ] = useState("");
-  const [estadoId, setEstadoId] = useState(""); // opcional (si cargás catálogo después)
-  const [planVigente, setPlanVigente] = useState(""); // "", "true", "false"
-
-  const [page, setPage] = useState(1);
+  const [planVigente, setPlanVigente] = useState("");
+  const [page, setPage]   = useState(1);
   const [limit, setLimit] = useState(20);
 
-  const [data, setData] = useState(null);
+  const [data, setData]         = useState(null);
   const [cargando, setCargando] = useState(false);
-  const [error, setError] = useState(null);
+  const [error, setError]       = useState(null);
 
-  async function cargar({ resetPage = false } = {}) {
+  async function cargar({ resetPage = false, q = "", planVigenteOverride } = {}) {
     const nextPage = resetPage ? 1 : page;
-
+    const pv = planVigenteOverride !== undefined ? planVigenteOverride : planVigente;
     setCargando(true);
     setError(null);
     try {
       const params = {
-        page: nextPage,
-        limit,
-        sort: "apellido",
-        order: "asc",
+        page: nextPage, limit,
+        sort: "apellido", order: "asc",
         ...(q?.trim() ? { q: q.trim() } : {}),
-        ...(estadoId ? { estado_id: estadoId } : {}),
-        ...(planVigente ? { plan_vigente: planVigente } : {}),
+        ...(pv        ? { plan_vigente: pv } : {}),
       };
-
       const r = await getAlumnosListado(params);
-      if (!r?.ok) {
-        setError(r?.mensaje || "No se pudo cargar alumnos");
-        setData(null);
-        return;
-      }
-
+      if (!r?.ok) { setError(r?.mensaje || "No se pudo cargar alumnos"); setData(null); return; }
       setData(r);
       if (resetPage) setPage(1);
     } catch (e) {
@@ -51,282 +138,95 @@ export default function ListaAlumnosPage() {
       setCargando(false);
     }
   }
-    async function actualizarYRecargar() {
+
+  async function actualizarYRecargar() {
     setCargando(true);
     setError(null);
-
     try {
-        const r = await actualizarEstadosAlumnos();
-
-        // opcional: si querés mostrar cambios:
-        // const cambios = r?.total_cambios ?? 0;
-
-        await cargar({ resetPage: false }); // o true si querés volver a página 1
+      await actualizarEstadosAlumnos();
+      await cargar();
     } catch (e) {
-        setError(e?.response?.data?.mensaje || e?.message || "No se pudo actualizar estados");
+      setError(e?.response?.data?.mensaje || e?.message || "No se pudo actualizar estados");
     } finally {
-        setCargando(false);
+      setCargando(false);
     }
-    }
+  }
 
-  useEffect(() => {
-    cargar();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, limit]);
+  useEffect(() => { cargar(); }, [page, limit]);
 
   const items = data?.items || [];
-  const pag = data?.pagination || { page: 1, totalPages: 1, total: 0, limit };
-
-  const mostrando = useMemo(() => {
-    const desde = (pag.page - 1) * pag.limit + 1;
-    const hasta = (pag.page - 1) * pag.limit + items.length;
-    if (!items.length) return "0";
-    return `${desde}–${hasta}`;
-  }, [pag, items]);
-
-  function irDetalle(alumnoId) {
-    nav(`/admin/estadisticas/alumnos/${alumnoId}`);
-  }
-
-  function estadoBadge(estadoDesc) {
-    const t = String(estadoDesc || "").toLowerCase();
-    const restringido = t.includes("restring") || t.includes("bloq") || t.includes("inactiv");
-    return (
-      <span
-        className={[
-          "inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold border",
-          restringido
-            ? "bg-red-50 text-red-700 border-red-200"
-            : "bg-blue-50 text-blue-700 border-blue-200",
-        ].join(" ")}
-      >
-        {estadoDesc || "—"}
-      </span>
-    );
-  }
-
-  function planBadge(tieneVigente) {
-    return (
-      <span
-        className={[
-          "inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold border",
-          tieneVigente
-            ? "bg-blue-50 text-blue-700 border-blue-200"
-            : "bg-gray-50 text-gray-700 border-gray-200",
-        ].join(" ")}
-      >
-        {tieneVigente ? "Plan vigente" : "Sin plan vigente"}
-      </span>
-    );
-  }
+  const pag   = data?.pagination || { page: 1, totalPages: 1, total: 0, limit };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4">
-      <div className="mx-auto w-full max-w-6xl">
-        <div className="rounded-3xl border bg-white shadow-sm p-5 md:p-6">
-          {/* Header */}
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+    <div className="min-h-screen bg-slate-50 p-3 sm:p-6">
+      <div className="mx-auto w-full max-w-6xl space-y-4">
+
+        {/* ── ENCABEZADO ── */}
+        <div className="overflow-hidden rounded-2xl border border-blue-100 bg-white shadow-sm shadow-blue-500/10">
+          <div className="h-1 w-full bg-linear-to-r from-blue-600 via-blue-500 to-cyan-400" />
+          <div className="flex flex-col gap-4 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <div className="inline-flex items-center gap-2 rounded-full bg-blue-600/10 px-4 py-1 text-sm font-semibold text-blue-700">
-                <Users size={16} />
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-600 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-white shadow-sm shadow-blue-500/30">
+                <Users size={11} />
                 Alumnos
-              </div>
-              <h1 className="mt-3 text-2xl md:text-3xl font-extrabold">
-                Listado de alumnos
-              </h1>
-              <p className="mt-1 text-sm text-gray-600">
-                Mostrando {mostrando} de {pag.total || 0}
+              </span>
+              <h1 className="mt-2 text-2xl font-extrabold text-slate-900">Listado de alumnos</h1>
+              <p className="mt-0.5 text-sm text-slate-500">
+                {pag.total || 0} alumnos en total
               </p>
             </div>
-
-            <SubmitButton
+            <button
               type="button"
-              onClick={() => actualizarYRecargar()}
+              onClick={actualizarYRecargar}
               disabled={cargando}
-              className="bg-blue-800"
-              
+              className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white shadow-sm shadow-blue-500/20 hover:bg-blue-500 transition disabled:opacity-50 self-start sm:self-auto"
             >
-              <RefreshCw size={16} className={cargando ? "animate-spin" : ""} />
-              {cargando ? "Cargando..." : "Actualizar"}
-            </SubmitButton>
+              <RefreshCw size={13} className={cargando ? "animate-spin" : ""} />
+              {cargando ? "…" : "Actualizar estados"}
+            </button>
           </div>
-
-          {/* Filtros */}
-          <div className="mt-6 grid grid-cols-1 md:grid-cols-4 gap-3">
-            <div className="md:col-span-2">
-              <div className="flex items-center gap-2 rounded-2xl border px-3 py-2">
-                <Search size={18} className="text-gray-500" />
-                <input
-                  value={q}
-                  onChange={(e) => setQ(e.target.value)}
-                  placeholder="Buscar por DNI, nombre, apellido o email..."
-                  className="w-full outline-none"
-                />
-              </div>
-            </div>
-
-            <select
-              value={planVigente}
-              onChange={(e) => setPlanVigente(e.target.value)}
-              className="rounded-2xl border px-3 py-2"
-            >
-              <option value="">Plan (todos)</option>
-              <option value="true">Con plan vigente</option>
-              <option value="false">Sin plan vigente</option>
-            </select>
-
-            <div className="flex gap-2">
-              <select
-                value={limit}
-                onChange={(e) => setLimit(Number(e.target.value))}
-                className="w-full rounded-2xl border px-3 py-2"
-              >
-                <option value={10}>10</option>
-                <option value={20}>20</option>
-                <option value={30}>30</option>
-                <option value={50}>50</option>
-              </select>
-
-              <button
-                type="button"
-                onClick={() => cargar({ resetPage: true })}
-                className="rounded-2xl border px-4 py-2 font-semibold"
-              >
-                Buscar
-              </button>
-            </div>
-          </div>
-
-          {/* Error */}
-          {error && (
-            <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-              {error}
-            </div>
-          )}
-
-          {/* Tabla */}
-          <div className="mt-6 overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-gray-500">
-                  <th className="py-3 pr-3">Alumno</th>
-                  <th className="py-3 pr-3">DNI</th>
-                  <th className="py-3 pr-3">Estado</th>
-                  <th className="py-3 pr-3">Plan</th>
-                  <th className="py-3 pr-3">Vence</th>
-                  <th className="py-3 pr-3">Ingresos</th>
-                  <th className="py-3 pr-3 text-right">Acción</th>
-                </tr>
-              </thead>
-              <tbody>
-                {cargando ? (
-                  Array.from({ length: 8 }).map((_, i) => (
-                    <tr key={i} className="border-t">
-                      <td className="py-4 pr-3">
-                        <div className="h-4 w-56 bg-gray-100 rounded animate-pulse" />
-                      </td>
-                      <td className="py-4 pr-3">
-                        <div className="h-4 w-24 bg-gray-100 rounded animate-pulse" />
-                      </td>
-                      <td className="py-4 pr-3">
-                        <div className="h-6 w-28 bg-gray-100 rounded-full animate-pulse" />
-                      </td>
-                      <td className="py-4 pr-3">
-                        <div className="h-6 w-28 bg-gray-100 rounded-full animate-pulse" />
-                      </td>
-                      <td className="py-4 pr-3">
-                        <div className="h-4 w-24 bg-gray-100 rounded animate-pulse" />
-                      </td>
-                      <td className="py-4 pr-3">
-                        <div className="h-4 w-14 bg-gray-100 rounded animate-pulse" />
-                      </td>
-                      <td className="py-4 pr-3 text-right">
-                        <div className="h-9 w-20 bg-gray-100 rounded-2xl animate-pulse ml-auto" />
-                      </td>
-                    </tr>
-                  ))
-                ) : items.length ? (
-                  items.map((it) => (
-                    <tr key={it.gym_alumno_id} className="border-t hover:bg-gray-50">
-                      <td className="py-4 pr-3">
-                        <div className="font-semibold">
-                          {it.gym_persona_apellido} {it.gym_persona_nombre}
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          {it.gym_persona_email || "—"}
-                        </div>
-                      </td>
-                      <td className="py-4 pr-3">{it.gym_persona_documento}</td>
-                      <td className="py-4 pr-3">{estadoBadge(it.estado_desc)}</td>
-                      <td className="py-4 pr-3">
-                        <div className="flex flex-col gap-1">
-                          {planBadge(it.tiene_plan_vigente)}
-                          <span className="text-xs text-gray-600">
-                            {it.plan_tipo_desc || "—"}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="py-4 pr-3">
-                        {formatearFechaAR(it.plan_fin) ? formatearFechaAR(String(it.plan_fin).slice(0, 10)) : "—"}
-                      </td>
-                      <td className="py-4 pr-3">
-                        {it.ingresos_disponibles ?? "—"}
-                      </td>
-                      <td className="py-4 pr-3 text-right">
-                        <SubmitButton
-                          type="button"
-                          onClick={() => irDetalle(it.gym_alumno_id)}
-                          className="bg-blue-800"
-                        >
-                          Ver
-                        </SubmitButton>
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr className="border-t">
-                    <td colSpan={7} className="py-6 text-center text-gray-500">
-                      No hay alumnos para mostrar.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Paginación */}
-          <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-3">
-            <div className="text-sm text-gray-600">
-              Página <b>{pag.page}</b> de <b>{pag.totalPages || 1}</b>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <SubmitButton
-                type="button"
-                onClick={() => setPage((x) => Math.max(1, x - 1))}
-                disabled={pag.page <= 1}
-                className="bg-blue-800"
-              >
-                <ChevronLeft size={16} />
-                Anterior
-              </SubmitButton>
-
-              <SubmitButton
-                type="button"
-                onClick={() => setPage((x) => Math.min(pag.totalPages || x + 1, x + 1))}
-                disabled={pag.page >= (pag.totalPages || 1)}
-                className="bg-blue-800"
-              >
-                Siguiente
-                <ChevronRight size={16} />
-              </SubmitButton>
-            </div>
-          </div>
-
-          <p className="mt-4 text-xs text-gray-500">
-            Tip: buscá por DNI, apellido o email. Click en “Ver” para detalle.
-          </p>
         </div>
+
+        {/* ── FILTRO PLAN ── */}
+        <div className="flex flex-wrap items-center gap-2">
+          <select
+            value={planVigente}
+            onChange={(e) => { const val = e.target.value; setPlanVigente(val); cargar({ resetPage: true, planVigenteOverride: val }); }}
+            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
+          >
+            <option value="">Plan (todos)</option>
+            <option value="true">Con plan vigente</option>
+            <option value="false">Sin plan vigente</option>
+          </select>
+        </div>
+
+        {/* ── ERROR ── */}
+        {error && (
+          <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {error}
+          </div>
+        )}
+
+        {/* ── TABLA ── */}
+        <DataGrid
+          rows={items}
+          columns={COLUMNS}
+          keyField="gym_alumno_id"
+          loading={cargando}
+          searchable
+          searchPlaceholder="Buscar por nombre, apellido, DNI o email…"
+          emptyMessage="No hay alumnos para mostrar."
+          onRowClick={(row) => nav(`/admin/estadisticas/alumnos/${row.gym_alumno_id}`)}
+          /* paginación server-side */
+          page={pag.page}
+          totalPages={pag.totalPages}
+          totalRows={pag.total}
+          onPageChange={setPage}
+          onPageSizeChange={setLimit}
+          pageSize={limit}
+          pageSizeOptions={[10, 20, 30, 50]}
+        />
+
       </div>
     </div>
   );

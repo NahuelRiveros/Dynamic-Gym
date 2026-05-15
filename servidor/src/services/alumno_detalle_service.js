@@ -42,7 +42,7 @@ export async function obtenerDetalleAlumno({ alumno_id }) {
   const sqlPlanActual = `
     WITH fvig AS (
       SELECT f.gym_fecha_id
-      FROM gym_plan_alumno f
+      FROM gym_fecha_disponible f
       WHERE f.gym_fecha_rela_alumno = :alumno_id
         AND f.gym_fecha_inicio <= CURRENT_DATE
         AND f.gym_fecha_fin >= CURRENT_DATE
@@ -51,7 +51,7 @@ export async function obtenerDetalleAlumno({ alumno_id }) {
     ),
     fult AS (
       SELECT f.gym_fecha_id
-      FROM gym_plan_alumno f
+      FROM gym_fecha_disponible f
       WHERE f.gym_fecha_rela_alumno = :alumno_id
         AND f.gym_fecha_fin IS NOT NULL
       ORDER BY f.gym_fecha_fin DESC, f.gym_fecha_id DESC
@@ -67,7 +67,7 @@ export async function obtenerDetalleAlumno({ alumno_id }) {
       f.gym_fecha_rela_tipoplan AS tipoplan_id,
       tp.gym_cat_tipoplan_descripcion AS tipoplan_desc,
       CASE WHEN (SELECT gym_fecha_id FROM fvig) IS NOT NULL THEN true ELSE false END AS vigente_hoy
-    FROM gym_plan_alumno f
+    FROM gym_fecha_disponible f
     LEFT JOIN gym_cat_tipoplan tp ON tp.gym_cat_tipoplan_id = f.gym_fecha_rela_tipoplan
     WHERE f.gym_fecha_id = COALESCE((SELECT gym_fecha_id FROM fvig),(SELECT gym_fecha_id FROM fult))
     LIMIT 1;
@@ -78,7 +78,7 @@ export async function obtenerDetalleAlumno({ alumno_id }) {
     type: QueryTypes.SELECT,
   });
 
-  // 3) Historial de planes/pagos (gym_plan_alumno)
+  // 3) Historial de planes/pagos (gym_fecha_disponible)
   const sqlPlanes = `
     SELECT
       f.gym_fecha_id AS plan_id,
@@ -90,7 +90,7 @@ export async function obtenerDetalleAlumno({ alumno_id }) {
       f.gym_fecha_ingresosdisponibles AS ingresos_disponibles,
       f.gym_fecha_rela_tipoplan AS tipoplan_id,
       tp.gym_cat_tipoplan_descripcion AS tipoplan_desc
-    FROM gym_plan_alumno f
+    FROM gym_fecha_disponible f
     LEFT JOIN gym_cat_tipoplan tp ON tp.gym_cat_tipoplan_id = f.gym_fecha_rela_tipoplan
     WHERE f.gym_fecha_rela_alumno = :alumno_id
     ORDER BY f.gym_fecha_fin DESC NULLS LAST, f.gym_fecha_id DESC;

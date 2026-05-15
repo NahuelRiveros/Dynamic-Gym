@@ -28,9 +28,11 @@ export default function NavbarUserBox({ mobile = false, onLogout }) {
     navigate("/login");
   }
 
-  const nombre =
-    usuario.nombre ?? usuario.usuario_nombre ?? usuario.correo ?? "Usuario";
-  const rol = usuario.rol ?? usuario.rol_nombre ?? usuario.perfil ?? "Usuario";
+  const nombre = [usuario.nombre, usuario.apellido].filter(Boolean).join(" ")
+    || usuario.email
+    || "Usuario";
+  const rol = (usuario.roles?.[0] ?? usuario.rol ?? "usuario")
+    .replace(/^\w/, (c) => c.toUpperCase());
   const initials = nombre
     .split(" ")
     .slice(0, 2)

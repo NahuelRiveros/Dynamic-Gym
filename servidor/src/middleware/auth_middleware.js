@@ -31,7 +31,6 @@ export function requireAuth(req, res, next) {
       roles: payload.roles ?? [],
     };
 
-    console.log("✅ Usuario autenticado:", req.user);
     return next();
   } catch (error) {
     console.error("JWT ERROR >>>", error.name, error.message);
